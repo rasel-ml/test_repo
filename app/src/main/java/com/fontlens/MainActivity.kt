@@ -1,0 +1,139 @@
+package com.fontlens
+
+import android.net.Uri
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.view.GravityCompat
+import androidx.navigation.fragment.NavHostFragment
+import com.fontlens.data.AppTheme
+import com.fontlens.data.FontRepository
+import com.fontlens.databinding.ActivityMainBinding
+import com.fontlens.databinding.ItemDrawerFolderBinding
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMainBinding
+    private var backPressedOnce = false
+    private val backToastHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Apply saved theme BEFORE setContentView
+        FontRepository.load(this)
+        applyTheme(FontRepository.settings.theme)
+
+        super.onCreate(savedInstanceState)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        val navHost = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        val navController = navHost.navController
+
+        binding.bottomNav.setOnItemSelectedListener { item ->
+            val destId = when (item.itemId) {
+                R.id.nav_library   -> R.id.fontListFragment
+                R.id.nav_favorites -> R.id.favoritesFragment
+                R.id.nav_settings  -> R.id.settingsFragment
+                else -> return@setOnItemSelectedListener false
+            }
+            navController.navigate(destId, null,
+                androidx.navigation.NavOptions.Builder()
+                    .setPopUpTo(R.id.fontListFragment, false)
+                    .setLaunchSingleTop(true).build()
+            )
+            true
+        }
+
+        val topDests = setOf(R.id.fontListFragment, R.id.favoritesFragment, R.id.settingsFragment)
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            binding.bottomNav.visibility =
+                if (destination.id in topDests) View.VISIBLE else View.GONE
+            when (destination.id) {
+                R.id.fontListFragment  -> binding.bottomNav.menu.findItem(R.id.nav_library)?.isChecked   = true
+                R.id.favoritesFragment -> binding.bottomNav.menu.findItem(R.id.nav_favorites)?.isChecked = true
+                R.id.settingsFragment  -> binding.bottomNav.menu.findItem(R.id.nav_settings)?.isChecked  = true
+            }
+        }
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    binding.drawerLayout.closeDrawer(GravityCompat.START); return
+                }
+                val currentDest = navController.currentDestination?.id
+                if (currentDest !in topDests) { navController.popBackStack(); return }
+                if (currentDest == R.id.settingsFragment || currentDest == R.id.favoritesFragment) {
+                    navController.navigate(R.id.fontListFragment, null,
+                        androidx.navigation.NavOptions.Builder()
+                            .setPopUpTo(R.id.fontListFragment, true)
+                            .setLaunchSingleTop(true).build()
+                    )
+                    binding.bottomNav.menu.findItem(R.id.nav_library)?.isChecked = true
+                    return
+                }
+                if (backPressedOnce) { backToastHandler.removeCallbacksAndMessages(null); finish(); return }
+                backPressedOnce = true
+                Toast.makeText(this@MainActivity, "Press back again to exit", Toast.LENGTH_SHORT).show()
+                backToastHandler.postDelayed({ backPressedOnce = false }, 2000)
+            }
+        })
+    }
+
+    private fun applyTheme(theme: AppTheme) {
+        AppCompatDelegate.setDefaultNightMode(when (theme) {
+            AppTheme.SYSTEM -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+            AppTheme.DAY    -> AppCompatDelegate.MODE_NIGHT_NO
+            AppTheme.NIGHT  -> AppCompatDelegate.MODE_NIGHT_YES
+        })
+    }
+
+    fun openDrawer()  { refreshDrawer(); binding.drawerLayout.openDrawer(GravityCompat.START) }
+    fun closeDrawer() { binding.drawerLayout.closeDrawer(GravityCompat.START) }
+
+    fun refreshDrawer() {
+        val container = binding.folderListContainer
+        val tvEmpty   = binding.tvDrawerEmpty
+        container.removeAllViews()
+        val folders = FontRepository.getSavedFolderUris()
+        tvEmpty.visibility = if (folders.isEmpty()) View.VISIBLE else View.GONE
+        val inflater = LayoutInflater.from(this)
+        folders.forEach { uri ->
+            val fb = ItemDrawerFolderBinding.inflate(inflater, container, false)
+            fb.tvFolderPath.text = getFolderDisplayName(uri)
+            fb.btnReload.setOnClickListener {
+                closeDrawer()
+                FontRepository.unmarkFolderLoaded(uri)
+                getLibraryFragment()?.reloadFolder(uri)
+            }
+            fb.btnRemoveFolder.setOnClickListener {
+                val dialog = android.app.AlertDialog.Builder(this, R.style.Theme_FontLens_Dialog)
+                    .setTitle("Remove Folder")
+                    .setMessage("Remove \"${getFolderDisplayName(uri)}\" and all its fonts from the library?")
+                    .setPositiveButton("Remove") { _, _ ->
+                        FontRepository.removeSavedFolder(uri, this)
+                        refreshDrawer()
+                        getLibraryFragment()?.refresh()
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .create()
+                dialog.show()
+            }
+            container.addView(fb.root)
+        }
+    }
+
+    fun getLibraryFragment(): com.fontlens.ui.list.FontListFragment? =
+        supportFragmentManager.findFragmentById(R.id.nav_host_fragment)
+            ?.childFragmentManager?.fragments?.firstOrNull()
+            as? com.fontlens.ui.list.FontListFragment
+
+    private fun getFolderDisplayName(uri: Uri): String =
+        try { "/" + (uri.lastPathSegment ?: uri.toString()).substringAfter(":") }
+        catch (_: Exception) { uri.toString() }
+}
+
