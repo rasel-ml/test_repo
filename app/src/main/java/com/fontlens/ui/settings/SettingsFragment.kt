@@ -234,7 +234,7 @@ class SettingsFragment : Fragment() {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_lang, null)
         val etName = dialogView.findViewById<TextInputEditText>(R.id.et_lang_name)
         val etText = dialogView.findViewById<TextInputEditText>(R.id.et_lang_sample)
-        AlertDialog.Builder(requireContext())
+        AlertDialog.Builder(requireContext(), R.style.Theme_FontLens_Dialog)
             .setTitle(getString(R.string.add_language))
             .setView(dialogView)
             .setPositiveButton(getString(R.string.save)) { _, _ ->

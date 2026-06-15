@@ -103,11 +103,11 @@ class FavoritesFragment : Fragment() {
         binding.btnSelDelete.setOnClickListener {
             val ids = adapter.getSelectedIds()
             if (ids.isEmpty()) return@setOnClickListener
-            AlertDialog.Builder(requireContext())
+            AlertDialog.Builder(requireContext(), R.style.Theme_FontLens_Dialog)
                 .setTitle("Delete ${ids.size} font(s)?")
                 .setMessage("Choose how to remove the selected fonts.")
                 .setPositiveButton("🗑 Delete from Storage") { _, _ ->
-                    AlertDialog.Builder(requireContext())
+                    AlertDialog.Builder(requireContext(), R.style.Theme_FontLens_Dialog)
                         .setTitle("⚠ Permanently delete ${ids.size} font(s)?")
                         .setMessage("This cannot be undone.")
                         .setPositiveButton("Delete") { _, _ ->
