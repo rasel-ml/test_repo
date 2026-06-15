@@ -8,7 +8,7 @@
 print("Hello ")
 print("World")
 ```
-
+Output:
     Hello World
 
 `println()` prints text in the console and moves to the next line.
