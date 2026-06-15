@@ -1,20 +1,22 @@
 package com.fontlens.ui.settings
 
 import android.app.AlertDialog
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
-import androidx.appcompat.app.AppCompatDelegate
+import android.widget.TextView
 import androidx.fragment.app.Fragment
 import com.fontlens.R
 import com.fontlens.data.AppSettings
-import com.fontlens.data.AppTheme
+import com.fontlens.data.ColorTheme
 import com.fontlens.data.FontRepository
 import com.fontlens.data.SamplePriority
 import com.fontlens.databinding.FragmentSettingsBinding
 import com.fontlens.databinding.ItemLangSettingBinding
+import com.fontlens.utils.ThemeManager
 import com.google.android.material.textfield.TextInputEditText
 
 class SettingsFragment : Fragment() {
@@ -34,7 +36,9 @@ class SettingsFragment : Fragment() {
 
     private fun renderAll() {
         val s = FontRepository.settings
-        renderTheme(s)
+        renderColorThemeSpinner(s)
+        renderFollowSystemSwitch(s)
+        renderDarkModeSwitch(s)
         renderPriority(s)
         renderGlyphSwitch(s)
         renderRecursiveSwitch(s)
@@ -42,29 +46,108 @@ class SettingsFragment : Fragment() {
         renderLangSpinner(s)
     }
 
-    private fun renderTheme(s: AppSettings) {
-        val rb = when (s.theme) {
-            AppTheme.SYSTEM -> binding.rbThemeSystem
-            AppTheme.DAY    -> binding.rbThemeDay
-            AppTheme.NIGHT  -> binding.rbThemeNight
-        }
-        rb.isChecked = true
-        binding.rgTheme.setOnCheckedChangeListener { _, id ->
-            val theme = when (id) {
-                R.id.rb_theme_system -> AppTheme.SYSTEM
-                R.id.rb_theme_day    -> AppTheme.DAY
-                R.id.rb_theme_night  -> AppTheme.NIGHT
-                else                 -> AppTheme.SYSTEM
+    // ── Color theme spinner with colored bullet circles ───────────────────
+
+    private fun renderColorThemeSpinner(s: AppSettings) {
+        data class ThemeOption(val theme: ColorTheme, val label: String, val color: Int)
+
+        val dark = s.darkMode && !s.followSystem
+        val options = listOf(
+            ThemeOption(ColorTheme.GREEN,  "Green",  ThemeManager.bulletColor(ColorTheme.GREEN)),
+            ThemeOption(ColorTheme.BLUE,   "Blue",   ThemeManager.bulletColor(ColorTheme.BLUE)),
+            ThemeOption(ColorTheme.RED,    "Red",    ThemeManager.bulletColor(ColorTheme.RED)),
+            ThemeOption(ColorTheme.YELLOW, "Yellow", ThemeManager.bulletColor(ColorTheme.YELLOW))
+        )
+
+        val adapter = object : ArrayAdapter<ThemeOption>(
+            requireContext(), android.R.layout.simple_spinner_item, options
+        ) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
+                buildRow(position, convertView, parent)
+
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View =
+                buildRow(position, convertView, parent)
+
+            private fun buildRow(position: Int, convertView: View?, parent: ViewGroup): View {
+                val opt = options[position]
+                val row = convertView
+                    ?: LayoutInflater.from(context)
+                        .inflate(android.R.layout.simple_spinner_item, parent, false)
+                val tv = row.findViewById<TextView>(android.R.id.text1)
+                tv.text = opt.label
+                tv.textSize = 14f
+
+                // Bullet circle drawable
+                val circle = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(opt.color)
+                    val size = (20 * context.resources.displayMetrics.density).toInt()
+                    setSize(size, size)
+                }
+                val pad = (6 * context.resources.displayMetrics.density).toInt()
+                tv.setCompoundDrawablesWithIntrinsicBounds(circle, null, null, null)
+                tv.compoundDrawablePadding = pad
+                return row
             }
-            FontRepository.settings = FontRepository.settings.copy(theme = theme)
+        }
+
+        binding.spinnerColorTheme.adapter = adapter
+        val idx = options.indexOfFirst { it.theme == s.colorTheme }.coerceAtLeast(0)
+        binding.spinnerColorTheme.setSelection(idx)
+
+        var userInteracted = false
+        binding.spinnerColorTheme.post { userInteracted = true } // skip initial callback
+
+        binding.spinnerColorTheme.onItemSelectedListener =
+            object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                    if (!userInteracted) return
+                    val chosen = options[pos].theme
+                    if (chosen == FontRepository.settings.colorTheme) return
+                    FontRepository.settings = FontRepository.settings.copy(colorTheme = chosen)
+                    FontRepository.saveSettings(requireContext())
+                    restartActivity()
+                }
+                override fun onNothingSelected(p: android.widget.AdapterView<*>?) {}
+            }
+    }
+
+    // ── Follow system switch ──────────────────────────────────────────────
+
+    private fun renderFollowSystemSwitch(s: AppSettings) {
+        binding.switchFollowSystem.isChecked = s.followSystem
+        updateDarkModeRowVisibility(s.followSystem)
+
+        binding.switchFollowSystem.setOnCheckedChangeListener { _, checked ->
+            FontRepository.settings = FontRepository.settings.copy(followSystem = checked)
             FontRepository.saveSettings(requireContext())
-            AppCompatDelegate.setDefaultNightMode(when (theme) {
-                AppTheme.SYSTEM -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-                AppTheme.DAY    -> AppCompatDelegate.MODE_NIGHT_NO
-                AppTheme.NIGHT  -> AppCompatDelegate.MODE_NIGHT_YES
-            })
+            updateDarkModeRowVisibility(checked)
+            restartActivity()
         }
     }
+
+    private fun updateDarkModeRowVisibility(followSystem: Boolean) {
+        binding.rowDarkMode.visibility = if (followSystem) View.GONE else View.VISIBLE
+    }
+
+    // ── Dark mode switch ──────────────────────────────────────────────────
+
+    private fun renderDarkModeSwitch(s: AppSettings) {
+        binding.switchDarkMode.isChecked = s.darkMode
+        binding.switchDarkMode.setOnCheckedChangeListener { _, checked ->
+            FontRepository.settings = FontRepository.settings.copy(darkMode = checked)
+            FontRepository.saveSettings(requireContext())
+            restartActivity()
+        }
+    }
+
+    // ── Restart activity to apply new theme ───────────────────────────────
+
+    private fun restartActivity() {
+        requireActivity().recreate()
+    }
+
+    // ── Priority ──────────────────────────────────────────────────────────
 
     private fun renderPriority(s: AppSettings) {
         val rb = when (s.samplePriority) {

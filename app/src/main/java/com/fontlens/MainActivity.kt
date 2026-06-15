@@ -7,13 +7,12 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.GravityCompat
 import androidx.navigation.fragment.NavHostFragment
-import com.fontlens.data.AppTheme
 import com.fontlens.data.FontRepository
 import com.fontlens.databinding.ActivityMainBinding
 import com.fontlens.databinding.ItemDrawerFolderBinding
+import com.fontlens.utils.ThemeManager
 
 class MainActivity : AppCompatActivity() {
 
@@ -22,9 +21,11 @@ class MainActivity : AppCompatActivity() {
     private val backToastHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Apply saved theme BEFORE setContentView
+        // Load settings and apply theme BEFORE setContentView
         FontRepository.load(this)
-        applyTheme(FontRepository.settings.theme)
+        val s = FontRepository.settings
+        ThemeManager.applyNightMode(s)
+        setTheme(ThemeManager.themeResId(s))
 
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -84,14 +85,6 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun applyTheme(theme: AppTheme) {
-        AppCompatDelegate.setDefaultNightMode(when (theme) {
-            AppTheme.SYSTEM -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-            AppTheme.DAY    -> AppCompatDelegate.MODE_NIGHT_NO
-            AppTheme.NIGHT  -> AppCompatDelegate.MODE_NIGHT_YES
-        })
-    }
-
     fun openDrawer()  { refreshDrawer(); binding.drawerLayout.openDrawer(GravityCompat.START) }
     fun closeDrawer() { binding.drawerLayout.closeDrawer(GravityCompat.START) }
 
@@ -136,4 +129,3 @@ class MainActivity : AppCompatActivity() {
         try { "/" + (uri.lastPathSegment ?: uri.toString()).substringAfter(":") }
         catch (_: Exception) { uri.toString() }
 }
-
