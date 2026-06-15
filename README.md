@@ -1,158 +1,692 @@
-<img src=".github/raw/banner.jpeg" alt="App Banner" width="100%"></img>
-<p align="center"></p>
-<h1 align="center"><img src=".github/raw/icon.png" alt="App Icon" height="30" width="30">  <b>FontLens</b></h1>
+<h1 align="center">Learn Kotlin</h1>
 
-<p align="center">A fully offline Android font viewer and inspector</p>
+### Topic 1 : Printing Output
+`print()` prints text without moving to a new line.
 
-## Features
-- Completely offline. No permission required.
-- Browse & preview local font files (.ttf, .otf, .woff, .woff2)
-- Live editable font preview with size, bold, italic controls
-- Glyph keyboard for showing all characters in the font
-- Metadata viewer and editor
-- Favorites system
-- Multiple sample texts support with configurable priority
 
-## Screenshots
-
-<div><img src=".github/raw/ss_1.png" alt="Library" width="32%"></img>
-<img src=".github/raw/ss_2.png" alt="Favorite" width="32%"></img>
-<img src=".github/raw/ss_3.png" alt="Preview" width="32%"></img></div>
-<div><img src=".github/raw/ss_4.png" alt="Font Info" width="32%"></img>
-<img src=".github/raw/ss_5.png" alt="Font Metadata" width="32%"></img>
-<img src=".github/raw/ss_6.png" alt="Glyph Map" width="32%"></img></div>
-
-## Building
-
-### In Android Studio
-1. Open the `FontLens/` folder
-2. Wait for Gradle sync
-3. Run ▶ on a device or emulator (min SDK 26)
-
-### Via GitHub Actions
-Push to `main` or `master` — the workflow builds a debug APK automatically.
-Download it from the **Actions** tab → latest run → **Artifacts**.
-
-### First-time Gradle wrapper setup
-If `gradle/wrapper/gradle-wrapper.jar` is missing, run once locally:
-```bash
-gradle wrapper --gradle-version 8.4
+```kotlin
+print("Hello ")
+print("World")
 ```
-This generates the `gradlew` binary and `.jar` needed by CI.
 
-## Project Structure
+    Hello World
+
+`println()` prints text in the console and moves to the next line.
+
+
+```kotlin
+println("Hello")
+println("World")
 ```
-app/src/main/
-├── AndroidManifest.xml
-├── java/com/fontlens/
-│    ├── FontPreviewActivity.kt
-│    ├── MainActivity.kt
-│    ├── data/
-│    │   ├── FontData.kt
-│    │   └── FontRepository.kt
-│    ├── ui/
-│    │   ├── DeleteFontDialog.kt
-│    │   ├── LoadingDialog.kt
-│    │   ├── glyph/
-│    │   │   ├── GlyphAdapter.kt
-│    │   │   └── GlyphFragment.kt
-│    │   ├── info/
-│    │   │   └── FontInfoFragment.kt
-│    │   ├── list/
-│    │   │   ├── FavoritesFragment.kt
-│    │   │   ├── FontListAdapter.kt
-│    │   │   └── FontListFragment.kt
-│    │   ├── meta/
-│    │   │   ├── MetaAdapter.kt
-│    │   │   ├── MetaEditFragment.kt
-│    │   │   └── MetaFragment.kt
-│    │   ├── preview/
-│    │   │   ├── PreviewFragment.kt
-│    │   │   ├── StandaloneGlyphFragment.kt
-│    │   │   ├── StandaloneInfoFragment.kt
-│    │   │   ├── StandaloneMetaFragment.kt
-│    │   │   └── StandalonePreviewFragment.kt
-│    │   └── settings/
-│    │       └── SettingsFragment.kt
-│    └── utils/
-│        ├── FontLoader.kt
-│        └── FontParser.kt
-└── res/
-    ├── color/
-    │   ├── nav_item_color.xml
-    │   └── switch_track_color.xml
-    ├── drawable/
-    │   ├── bg_accent_btn.xml
-    │   ├── bg_badge.xml
-    │   ├── bg_bottom_sheet.xml
-    │   ├── bg_delete_btn.xml
-    │   ├── bg_drawer_item.xml
-    │   ├── bg_glyph_cell.xml
-    │   ├── bg_input.xml
-    │   ├── bg_loading_dialog.xml
-    │   ├── bg_search_small.xml
-    │   ├── bg_sheet_handle.xml
-    │   ├── bg_spinner.xml
-    │   ├── bg_style_btn.xml
-    │   ├── bg_style_btn_active.xml
-    │   ├── ic_add.xml
-    │   ├── ic_back.xml
-    │   ├── ic_launcher_foreground.png
-    │   ├── ic_library.xml
-    │   ├── ic_search.xml
-    │   ├── ic_settings.xml
-    │   └── ic_star.xml
-    ├── layout/
-    │   ├── activity_font_preview.xml
-    │   ├── activity_main.xml
-    │   ├── bottom_sheet_sort.xml
-    │   ├── dialog_add_lang.xml
-    │   ├── dialog_delete_font.xml
-    │   ├── dialog_loading.xml
-    │   ├── fragment_font_info.xml
-    │   ├── fragment_font_list.xml
-    │   ├── fragment_glyph.xml
-    │   ├── fragment_meta_edit.xml
-    │   ├── fragment_metadata.xml
-    │   ├── fragment_preview.xml
-    │   ├── fragment_settings.xml
-    │   ├── item_drawer_folder.xml
-    │   ├── item_edit_field.xml
-    │   ├── item_folder_header.xml
-    │   ├── item_font_card.xml
-    │   ├── item_glyph_cell.xml
-    │   ├── item_info_row.xml
-    │   ├── item_lang_setting.xml
-    │   └── item_meta_row.xml
-    ├── menu/
-    │   └── bottom_nav_menu.xml
-    ├── mipmap-anydpi-v26/
-    │   ├── ic_launcher.xml
-    │   └── ic_launcher_round.xml
-    ├── navigation/
-    │   └── nav_graph.xml
-    ├── values
-    │   ├── colors.xml
-    │   ├── dimens.xml
-    │   ├── strings.xml
-    │   └── themes.xml
-    └── values-night
-         └── themes.xml
+
+    Hello
+    World
+
+
+`println()` with no argument prints a blank line.
+
+
+```kotlin
+println("Line 1")
+println()
+println("Line 3")
 ```
-## Disclaimer
-This app is made by/with help of
-- Claude AI [For coding help]
-- Termux (Androied) [For git push]
-- Github-Action [To build]
 
-No Laptop/Computer is used.
+    Line 1
+    
+    Line 3
 
-## Copyright
+
+#### Escaped Charecters
+New line (`\n`) Tab (`\t`)
+
+
+```kotlin
+println("Name\tAge")
+println("Rasel\t21")
 ```
-Copyright (C) 2026 Md. Rasel Molla
 
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or any later version.
+    Name	Age
+    Rasel	21
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-See the GNU General Public License for more details.
+
+#### Raw Strings
+
+
+```kotlin
+println("""
+Line 1
+Line 2
+Line 3
+""")
 ```
+
+    
+    Line 1
+    Line 2
+    Line 3
+    
+
+
+### Topic 2 : Variables
+Kotlin has two main ways to store values:
+- `val` = cannot change
+- `var` = can change
+
+Use `val` when the value should stay fixed. Use `var` when the value may change later.
+
+
+```kotlin
+val a = 67
+var b = 89
+println("b is $b")
+b = a + b
+println ("b is now $b")
+```
+
+    b is 89
+    b is now 156
+
+
+### Topic 3 : Oparators
+Operators let you perform calculations and comparisons.
+#### Arithmetic Operators
+|Oparator|Meaning|
+|---|--|
+|+|Add|
+|-|Subtract|
+|*|Multiply|
+|/|Divide|
+|%|Modulus (Reminder)|
+
+
+```kotlin
+val a = 10
+val b = 3
+
+println(a + b) // 13
+println(a - b) // 7
+println(a * b) // 30
+println(a / b) // 3
+println(a % b) // 1
+```
+
+    13
+    7
+    30
+    3
+    1
+
+
+#### Assignment Operators
+|Oparator|Meaning|
+|---|--|
+|=|Assign|
+|+=|Add and assign|
+|-=|Subtract and assign|
+|*=|Multiply and assign|
+|/=|Divide and assign|
+
+
+```kotlin
+var x = 10
+
+x += 5
+println(x) // 15
+
+x -= 3
+println(x) // 12
+```
+
+    15
+    12
+
+
+#### Comparison Operators
+Used to compare values.
+|Oparator|Meaning|
+|---|--|
+|==|Equal|
+|!=|Not equal|
+|>|Greater than|
+|<|Less than|
+|>=|Greater or equal|
+|<=|Less or equal|
+
+
+```kotlin
+val a = 10
+val b = 20
+
+println(a == b) // false
+println(a < b)  // true
+println(a >= b) // false
+```
+
+    false
+    true
+    false
+
+
+Result is always a Boolean (true or false).
+#### Logical Operators
+Used to combine conditions.
+|Oparator|Meaning|
+|---|--|
+|&&|AND|
+|\|\||OR|
+|!|NOT|
+##### AND (&&)
+Both condition must be true.
+
+
+```kotlin
+val age = 20
+val hasId = true
+
+println(age >= 18 && hasId)
+```
+
+    true
+
+
+##### OR(||)
+Atleast one condition must be true.
+
+
+```kotlin
+val isAdmin = false
+val isOwner = true
+
+println(isAdmin || isOwner)
+```
+
+    true
+
+
+##### NOT (!)
+Reverses a Boolean.
+
+
+```kotlin
+val loggedIn = true
+
+println(!loggedIn)
+```
+
+    false
+
+
+#### Increment and Decrement
+|Oparator|Meaning|
+|---|--|
+|++|Increase by 1|
+|--|Decrease by 1|
+
+
+```kotlin
+var x = 5
+
+x++
+println(x) // 6
+
+x--
+println(x) // 5
+```
+
+    6
+    5
+
+
+#### Operator Precedence
+Just like mathematics:
+
+
+```kotlin
+val result = 2 + 3 * 4
+println(result)
+```
+
+    14
+
+
+Use parentheses:
+
+
+```kotlin
+val result = (2 + 3) * 4
+println(result)
+```
+
+    20
+
+
+### Topic 4 : Data Types
+Common Kotlin data types:
+- `Int` - whole numbers
+- `Double` - decimal numbers
+- `Boolean` - true/false
+- `String` - text
+- `Char` - single character
+
+Kotlin can often detect the type automatically, but you can also write it clearly.
+
+
+```kotlin
+val count: Int = 5
+val price: Double = 99.5
+val isReady: Boolean = true
+val city: String = "Khulna"
+val grade: Char = 'A'
+```
+
+### String Templates
+You can put variables inside strings using `$`.
+
+
+```kotlin
+val name = "Rasel"
+val age = 21
+
+println("My name is $name and I am $age years old.")
+```
+
+    My name is Rasel and I am 21 years old.
+
+
+You can also use expressions:
+
+
+```kotlin
+println("Next year I will be ${age + 1}")
+```
+
+    Next year I will be 22
+
+
+#### Formatted Output (printf style)
+Common format specifiers:
+|Specifier|Type|
+|---|---|
+|%d|Integer|
+|%f|Decimal number|
+|%s|String|
+|%c|Character|
+|%b|Boolean|
+|%n|New line|
+
+
+```kotlin
+val pi = 3.14159
+System.out.printf("PI = %.2f%n", pi)
+```
+
+    PI = 3.14
+
+
+
+
+
+    java.io.PrintStream@5638520b
+
+
+
+### If / Else Statement
+Used for decision making.
+
+
+```kotlin
+val age = 18
+
+if (age >= 18) {
+    println("Adult")
+} else {
+    println("Minor")
+}
+```
+
+    Adult
+
+
+we can also use **Else If** when there are multiple conditions.
+
+
+```kotlin
+val marks = 75
+
+if (marks >= 80) {
+    println("A+")
+} else if (marks >= 70) {
+    println("A")
+} else if (marks >= 60) {
+    println("A-")
+} else {
+    println("Fail")
+}
+```
+
+    A
+
+
+We can use nested if/else if neccesary
+
+
+```kotlin
+//upcoming
+```
+
+Kotlin checks conditions from top to bottom and runs the first match.
+
+### When Statement
+when is like a better switch
+
+
+```kotlin
+val day = 3
+
+when (day) {
+    1 -> println("Sunday")
+    2 -> println("Monday")
+    3 -> println("Tuesday")
+    4 -> println("Wednesday")
+    else -> println("Invalid day")
+}
+```
+
+    Tuesday
+
+
+Use when when one value needs to match many possible cases.
+### Loops
+#### For loop
+we use loop when we need like to prints numbers from 1 to 5.
+
+
+```kotlin
+for (i in 1..5) {
+    println(i)
+}
+```
+
+    1
+    2
+    3
+    4
+    5
+
+
+You can also loop through a list:
+
+
+```kotlin
+val names = listOf("A", "B", "C")
+
+for (name in names) {
+    println(name)
+}
+```
+
+    A
+    B
+    C
+
+
+#### While loop
+The loop keeps running while the condition is true.
+
+
+```kotlin
+var i = 1
+
+while (i <= 5) {
+    println(i)
+    i++
+}
+```
+
+    1
+    2
+    3
+    4
+    5
+
+
+### Functions
+Functions help you reuse code.
+`fun` means function. Calling `greet()` runs it.
+
+
+```kotlin
+fun greet() {
+    println("Hello!")
+}
+
+greet()
+```
+
+    Hello!
+
+
+Function with parameters
+A parameter is input sent into the function.
+
+
+```kotlin
+fun greet(name: String) {
+    println("Hello, $name")
+}
+
+greet("Rasel")
+```
+
+    Hello, Rasel
+
+
+Function with return value
+This function returns a number. The return type is written after :
+
+
+```kotlin
+fun add(a: Int, b: Int): Int {
+    return a + b
+}
+
+val result = add(5, 3)
+println(result)
+```
+
+    8
+
+
+### Null Safety
+Kotlin is very strong here.
+A variable that can be empty must be marked `?`.
+
+
+```kotlin
+var name: String? = "Rasel"
+```
+
+You must check before using it safely:
+
+
+```kotlin
+if (name != null) {
+    println(name.length)
+}
+```
+
+    5
+
+
+Or use safe call:
+
+
+```kotlin
+println(name?.length)
+```
+
+    5
+
+
+This helps prevent crashes caused by null values
+### Lists
+A list stores multiple items.
+
+
+```kotlin
+val fruits = listOf("Apple", "Banana", "Mango")
+println(fruits[0])
+```
+
+    Apple
+
+
+`listOf()` creates a read-only list.
+If you want to change items, use `mutableListOf()`:
+
+
+```kotlin
+val numbers = mutableListOf(1, 2, 3)
+numbers.add(4)
+println(numbers)
+```
+
+    [1, 2, 3, 4]
+
+
+### Arrays
+Arrays also store multiple values. Arrays are fixed-size containers. In Kotlin, lists are more common than arrays.
+
+
+```kotlin
+val nums = arrayOf(10, 20, 30)
+println(nums[1])
+```
+
+    20
+
+
+### Classes and Objects
+Kotlin supports object-oriented programming.
+A class is a blueprint. An object is a real thing made from that blueprint.
+
+
+```kotlin
+class Person(val name: String, val age: Int)
+
+val p1 = Person("Rasel", 21)
+println(p1.name)
+```
+
+    Rasel
+
+
+### Constructor
+This is the part inside the class definition:
+
+
+```kotlin
+class Student(val name: String, val roll: Int)
+```
+
+When you create the object, you pass values into the constructor.
+
+
+```kotlin
+val s = Student("Rasel", 9)
+```
+
+### Object and Companion Object
+Sometimes you do not need to create an object to use a function.
+
+
+```kotlin
+class MathHelper {
+    companion object {
+        fun square(n: Int): Int {
+            return n * n
+        }
+    }
+}
+
+println(MathHelper.square(4))
+```
+
+    16
+
+
+A companion object acts like a static member in Java.
+
+### Basic Input Example
+In Kotlin console programs:
+readLine() reads text from the user.
+
+
+```kotlin
+print("Enter your name: ")
+val name = readLine()
+println("Hello, $name")
+```
+
+    Enter your name: 
+
+    stdin: Rasel
+
+
+    Hello, Rasel
+
+
+### Type Conversion
+Sometimes you need to convert one type to another.
+
+
+```kotlin
+val a = "10"
+val b = a.toInt()
+
+println(b + 5)
+```
+
+    15
+
+
+The string "10" becomes the number 10.
+Common conversions:
+
+
+```kotlin
+val x = 5.toDouble()
+val y = 9.8.toInt()
+```
+
+### Range
+A range is a sequence of values.
+
+
+```kotlin
+for (i in 1..3) {
+    println(i)
+}
+```
+
+    1
+    2
+    3
+
+
+`1..3` means 1 to 3.
+You can also go backwards:
+
+
+```kotlin
+for (i in 5 downTo 1) {
+    println(i)
+}
+```
+
+    5
+    4
+    3
+    2
+    1
