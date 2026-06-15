@@ -1,7 +1,9 @@
 package com.fontlens
 
+import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Toast
@@ -21,7 +23,6 @@ class MainActivity : AppCompatActivity() {
     private val backToastHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Load settings and apply theme BEFORE setContentView
         FontRepository.load(this)
         val s = FontRepository.settings
         ThemeManager.applyNightMode(s)
@@ -30,6 +31,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        applyBottomNavTint()
 
         val navHost = supportFragmentManager
             .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
@@ -83,6 +86,22 @@ class MainActivity : AppCompatActivity() {
                 backToastHandler.postDelayed({ backPressedOnce = false }, 2000)
             }
         })
+    }
+
+    private fun applyBottomNavTint() {
+        val accent   = resolveThemeColor(com.google.android.material.R.attr.colorPrimary)
+        val muted    = resolveThemeColor(R.attr.textMuted)
+        val states   = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
+        val colors   = intArrayOf(accent, muted)
+        val tint     = ColorStateList(states, colors)
+        binding.bottomNav.itemIconTintList = tint
+        binding.bottomNav.itemTextColor    = tint
+    }
+
+    private fun resolveThemeColor(attr: Int): Int {
+        val tv = TypedValue()
+        theme.resolveAttribute(attr, tv, true)
+        return if (tv.resourceId != 0) getColor(tv.resourceId) else tv.data
     }
 
     fun openDrawer()  { refreshDrawer(); binding.drawerLayout.openDrawer(GravityCompat.START) }
