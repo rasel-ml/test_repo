@@ -69,8 +69,12 @@ object ThemeManager {
      * SIMPLER APPROACH used here: we store the active palette in a companion object
      * and fragments/activities call applyPaletteToViews() on their root views.
      */
-    var activePalette: Palette = greenLight
-        private set
+    var activePalette: Palette = Palette(
+        bgPrimary=0xFFF4F6F4.toInt(), bgSurface=0xFFFFFFFF.toInt(), bgElevated=0xFFEAEEEA.toInt(),
+        bgSidebar=0xFFDDE5DD.toInt(), accent=0xFF2E7D32.toInt(), accentDim=0xFFC8E6C9.toInt(),
+        textPrimary=0xFF1B1B1B.toInt(), textSecondary=0xFF4A4A4A.toInt(), textMuted=0xFF888888.toInt(),
+        divider=0xFFD0D9D0.toInt(), border=0xFFB8C8B8.toInt()
+    )
 
     fun applyTheme(settings: AppSettings) {
         activePalette = getPalette(settings)

@@ -8,6 +8,7 @@ import android.widget.TextView
 import com.fontlens.R
 import com.fontlens.data.FontItem
 import com.fontlens.data.FontRepository
+import com.fontlens.utils.ThemeManager
 
 object DeleteFontDialog {
 
