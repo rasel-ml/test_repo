@@ -49,7 +49,7 @@ object DeleteFontDialog {
             // Use same themed context for second dialog
             AlertDialog.Builder(themed)
                 .setTitle("⚠ Permanently Delete")
-                .setMessage("Delete \"$name\" from your device?\n\nAndroid will ask for permission. This cannot be undone.")
+                .setMessage("Delete \"$name\" from your device?\n\nThis cannot be undone.")
                 .setPositiveButton("Delete") { _, _ -> onDeletePermanently() }
                 .setNegativeButton("Cancel", null)
                 .show()
