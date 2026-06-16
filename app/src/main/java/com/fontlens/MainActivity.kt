@@ -17,7 +17,6 @@ import com.fontlens.databinding.ActivityMainBinding
 import com.fontlens.databinding.ItemDrawerFolderBinding
 import android.view.ContextThemeWrapper
 import com.fontlens.utils.ThemeManager
-import com.fontlens.utils.ThemedContextWrapper
 
 class MainActivity : AppCompatActivity() {
 
@@ -31,7 +30,7 @@ class MainActivity : AppCompatActivity() {
         ThemeManager.applyTheme(s)
         ThemeManager.applyNightMode(s)
         val themeResId = ThemeManager.themeResId(s)
-        super.attachBaseContext(ThemedContextWrapper.wrap(newBase, themeResId))
+        super.attachBaseContext(android.view.ContextThemeWrapper(newBase, themeResId))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
