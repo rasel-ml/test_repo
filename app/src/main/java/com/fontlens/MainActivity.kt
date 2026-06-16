@@ -1,5 +1,6 @@
 package com.fontlens
 
+import android.content.Context
 import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Bundle
@@ -14,7 +15,9 @@ import androidx.navigation.fragment.NavHostFragment
 import com.fontlens.data.FontRepository
 import com.fontlens.databinding.ActivityMainBinding
 import com.fontlens.databinding.ItemDrawerFolderBinding
+import android.view.ContextThemeWrapper
 import com.fontlens.utils.ThemeManager
+import com.fontlens.utils.ThemedContextWrapper
 
 class MainActivity : AppCompatActivity() {
 
@@ -22,12 +25,18 @@ class MainActivity : AppCompatActivity() {
     private var backPressedOnce = false
     private val backToastHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        FontRepository.load(this)
+    override fun attachBaseContext(newBase: Context) {
+        FontRepository.load(newBase)
         val s = FontRepository.settings
+        ThemeManager.applyTheme(s)
         ThemeManager.applyNightMode(s)
-        setTheme(ThemeManager.themeResId(s))
+        val themeResId = ThemeManager.themeResId(s)
+        super.attachBaseContext(ThemedContextWrapper.wrap(newBase, themeResId))
+    }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        val s = FontRepository.settings
+        setTheme(ThemeManager.themeResId(s))
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -89,19 +98,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyBottomNavTint() {
-        val accent   = resolveThemeColor(com.google.android.material.R.attr.colorPrimary)
-        val muted    = resolveThemeColor(R.attr.textMuted)
-        val states   = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
-        val colors   = intArrayOf(accent, muted)
-        val tint     = ColorStateList(states, colors)
+        val p      = ThemeManager.activePalette
+        val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
+        val tint   = ColorStateList(states, intArrayOf(p.accent, p.textMuted))
         binding.bottomNav.itemIconTintList = tint
         binding.bottomNav.itemTextColor    = tint
-    }
-
-    private fun resolveThemeColor(attr: Int): Int {
-        val tv = TypedValue()
-        theme.resolveAttribute(attr, tv, true)
-        return if (tv.resourceId != 0) getColor(tv.resourceId) else tv.data
     }
 
     fun openDrawer()  { refreshDrawer(); binding.drawerLayout.openDrawer(GravityCompat.START) }
@@ -123,17 +124,16 @@ class MainActivity : AppCompatActivity() {
                 getLibraryFragment()?.reloadFolder(uri)
             }
             fb.btnRemoveFolder.setOnClickListener {
-                val dialog = android.app.AlertDialog.Builder(this, R.style.Theme_FontLens_Dialog)
+                android.app.AlertDialog.Builder(ContextThemeWrapper(this, ThemeManager.currentThemeResId(this)))
                     .setTitle("Remove Folder")
-                    .setMessage("Remove \"${getFolderDisplayName(uri)}\" and all its fonts from the library?")
+                    .setMessage("Remove \"${getFolderDisplayName(uri)}\" and all its fonts?")
                     .setPositiveButton("Remove") { _, _ ->
                         FontRepository.removeSavedFolder(uri, this)
                         refreshDrawer()
                         getLibraryFragment()?.refresh()
                     }
                     .setNegativeButton("Cancel", null)
-                    .create()
-                dialog.show()
+                    .show()
             }
             container.addView(fb.root)
         }

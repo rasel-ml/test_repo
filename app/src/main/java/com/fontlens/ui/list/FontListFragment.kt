@@ -27,7 +27,9 @@ import com.fontlens.databinding.BottomSheetSortBinding
 import com.fontlens.databinding.FragmentFontListBinding
 import com.fontlens.ui.DeleteFontDialog
 import com.fontlens.ui.LoadingDialog
+import android.view.ContextThemeWrapper
 import com.fontlens.utils.FontLoader
+import com.fontlens.utils.ThemeManager
 import com.fontlens.utils.StorageDeleteHelper
 import com.fontlens.utils.TypefaceLoader
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -148,11 +150,11 @@ class FontListFragment : Fragment() {
         binding.btnSelDelete.setOnClickListener {
             val ids = adapter.getSelectedIds()
             if (ids.isEmpty()) return@setOnClickListener
-            AlertDialog.Builder(requireContext(), R.style.Theme_FontLens_Dialog)
+            AlertDialog.Builder(ContextThemeWrapper(requireContext(), ThemeManager.currentThemeResId(requireContext())))
                 .setTitle("Delete ${ids.size} font(s)?")
                 .setMessage("Choose how to remove the selected fonts.")
                 .setPositiveButton("🗑 Delete from Storage") { _, _ ->
-                    AlertDialog.Builder(requireContext(), R.style.Theme_FontLens_Dialog)
+                    AlertDialog.Builder(ContextThemeWrapper(requireContext(), ThemeManager.currentThemeResId(requireContext())))
                         .setTitle("⚠ Permanently delete ${ids.size} font(s)?")
                         .setMessage("This cannot be undone.")
                         .setPositiveButton("Delete") { _, _ ->

@@ -12,7 +12,9 @@ import androidx.fragment.app.Fragment
 import com.fontlens.R
 import com.fontlens.data.AppSettings
 import com.fontlens.data.ColorTheme
+import android.view.ContextThemeWrapper
 import com.fontlens.data.FontRepository
+import com.fontlens.utils.ThemeManager
 import com.fontlens.data.SamplePriority
 import com.fontlens.databinding.FragmentSettingsBinding
 import com.fontlens.databinding.ItemLangSettingBinding
@@ -234,7 +236,7 @@ class SettingsFragment : Fragment() {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_lang, null)
         val etName = dialogView.findViewById<TextInputEditText>(R.id.et_lang_name)
         val etText = dialogView.findViewById<TextInputEditText>(R.id.et_lang_sample)
-        AlertDialog.Builder(requireContext(), R.style.Theme_FontLens_Dialog)
+        AlertDialog.Builder(ContextThemeWrapper(requireContext(), ThemeManager.currentThemeResId(requireContext())))
             .setTitle(getString(R.string.add_language))
             .setView(dialogView)
             .setPositiveButton(getString(R.string.save)) { _, _ ->
