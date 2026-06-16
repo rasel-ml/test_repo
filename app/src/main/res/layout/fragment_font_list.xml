@@ -69,7 +69,7 @@
                 android:layout_marginStart="4dp"
                 android:padding="9dp"
                 android:src="@drawable/ic_sort"
-                android:imageTintList="@color/ic_tint_secondary"
+                app:tint="@color/ic_tint_secondary"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackgroundBorderless" />
@@ -80,7 +80,7 @@
                 android:layout_height="40dp"
                 android:padding="9dp"
                 android:src="@drawable/ic_sun"
-                android:imageTintList="@color/ic_tint_secondary"
+                app:tint="@color/ic_tint_secondary"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackgroundBorderless" />
@@ -136,7 +136,7 @@
                 android:layout_height="40dp"
                 android:padding="8dp"
                 android:src="@drawable/ic_star_outline"
-                android:imageTintList="@color/ic_tint_secondary"
+                app:tint="@color/ic_tint_secondary"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackgroundBorderless" />
@@ -147,7 +147,7 @@
                 android:layout_height="40dp"
                 android:padding="8dp"
                 android:src="@drawable/ic_delete"
-                android:imageTintList="@color/ic_delete_tint"
+                app:tint="@color/ic_delete_tint"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackgroundBorderless" />
@@ -204,7 +204,7 @@
             android:layout_width="80dp"
             android:layout_height="80dp"
             android:src="@drawable/ic_add_circle"
-            android:imageTintList="@color/ic_tint_muted"
+            app:tint="@color/ic_tint_muted"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackgroundBorderless" />

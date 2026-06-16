@@ -1,12 +1,11 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <!-- Keyboard outline -->
-    <rect android:fillColor="@android:color/transparent"
-        android:strokeColor="#000" android:strokeWidth="1.8"
-        android:x="1" android:y="6" android:width="22" android:height="13" android:rx="2"/>
-    <!-- Keys -->
-    <path android:fillColor="@android:color/transparent"
-        android:strokeColor="#000" android:strokeWidth="1.8"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#000"
+        android:strokeWidth="1.8"
         android:strokeLineCap="round"
-        android:pathData="M5,10 H5.01 M9,10 H9.01 M13,10 H13.01 M17,10 H17.01 M19,10 H19.01 M7,14 H17"/>
+        android:strokeLineJoin="round"
+        android:pathData="M3,8 Q3,6 5,6 L19,6 Q21,6 21,8 L21,16 Q21,18 19,18 L5,18 Q3,18 3,16 Z M7,11 H7.1 M11,11 H11.1 M15,11 H15.1 M8,14 H16"/>
 </vector>
