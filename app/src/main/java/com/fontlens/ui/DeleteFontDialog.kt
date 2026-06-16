@@ -2,6 +2,7 @@ package com.fontlens.ui
 
 import android.app.AlertDialog
 import android.content.Context
+import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import android.widget.TextView
 import com.fontlens.R
@@ -17,8 +18,12 @@ object DeleteFontDialog {
         onDeletePermanently: () -> Unit
     ) {
         val name = font.effectiveMeta.family.ifEmpty { font.displayName }
-        val view = android.view.LayoutInflater.from(context)
-            .inflate(R.layout.dialog_delete_font, null)
+
+        // Wrap with the full app theme so ?attr/ refs in the layout AND
+        // in bg_loading_dialog / bg_delete_btn / bg_style_btn drawables resolve
+        val themed = ContextThemeWrapper(context, ThemeManager.currentThemeResId(context))
+
+        val view = LayoutInflater.from(themed).inflate(R.layout.dialog_delete_font, null)
 
         val tvName        = view.findViewById<TextView>(R.id.tv_delete_font_name)
         val tvMessage     = view.findViewById<TextView>(R.id.tv_delete_message)
@@ -28,7 +33,7 @@ object DeleteFontDialog {
         tvName.text    = name
         tvMessage.text = "What would you like to do with this font?"
 
-        val dialog = AlertDialog.Builder(context)
+        val dialog = AlertDialog.Builder(themed)
             .setView(view).create()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
@@ -40,7 +45,8 @@ object DeleteFontDialog {
 
         btnDeletePerm.setOnClickListener {
             dialog.dismiss()
-            AlertDialog.Builder(context, R.style.Theme_FontLens_Dialog)
+            // Use same themed context for second dialog
+            AlertDialog.Builder(themed)
                 .setTitle("⚠ Permanently Delete")
                 .setMessage("Delete \"$name\" from your device?\n\nAndroid will ask for permission. This cannot be undone.")
                 .setPositiveButton("Delete") { _, _ -> onDeletePermanently() }
