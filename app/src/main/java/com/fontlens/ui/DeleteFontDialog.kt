@@ -17,10 +17,8 @@ object DeleteFontDialog {
         onDeletePermanently: () -> Unit
     ) {
         val name = font.effectiveMeta.family.ifEmpty { font.displayName }
-
-        // Use the app theme so all ?attr/ references in the layout resolve correctly
-        val themedContext = android.view.ContextThemeWrapper(context, R.style.Theme_FontLens_Dialog)
-        val view = LayoutInflater.from(themedContext).inflate(R.layout.dialog_delete_font, null)
+        val view = android.view.LayoutInflater.from(context)
+            .inflate(R.layout.dialog_delete_font, null)
 
         val tvName        = view.findViewById<TextView>(R.id.tv_delete_font_name)
         val tvMessage     = view.findViewById<TextView>(R.id.tv_delete_message)
@@ -30,7 +28,7 @@ object DeleteFontDialog {
         tvName.text    = name
         tvMessage.text = "What would you like to do with this font?"
 
-        val dialog = AlertDialog.Builder(themedContext)
+        val dialog = AlertDialog.Builder(context)
             .setView(view).create()
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
@@ -42,7 +40,7 @@ object DeleteFontDialog {
 
         btnDeletePerm.setOnClickListener {
             dialog.dismiss()
-            AlertDialog.Builder(themedContext)
+            AlertDialog.Builder(context, R.style.Theme_FontLens_Dialog)
                 .setTitle("⚠ Permanently Delete")
                 .setMessage("Delete \"$name\" from your device?\n\nAndroid will ask for permission. This cannot be undone.")
                 .setPositiveButton("Delete") { _, _ -> onDeletePermanently() }
