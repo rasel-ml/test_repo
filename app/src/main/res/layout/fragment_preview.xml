@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     android:background="?attr/bgPrimary">
 
+    <!-- ── Top toolbar ─────────────────────────────────────────────────── -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="0dp"
@@ -22,7 +23,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingEnd="8dp">
+            android:paddingEnd="4dp">
 
             <TextView
                 android:id="@+id/tv_font_name"
@@ -36,7 +37,6 @@
                 android:ellipsize="end"
                 android:letterSpacing="0.04" />
 
-            <!-- Add to Library (temp mode only) -->
             <TextView
                 android:id="@+id/btn_add_to_library"
                 android:layout_width="wrap_content"
@@ -113,101 +113,320 @@
         </LinearLayout>
     </androidx.appcompat.widget.Toolbar>
 
-    <LinearLayout
-        android:id="@+id/controls_bar"
+    <!-- ── Preview canvas (fills middle) ──────────────────────────────── -->
+    <FrameLayout
+        android:id="@+id/preview_canvas"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:padding="10dp"
-        android:background="?attr/bgSidebar"
+        android:layout_height="0dp"
+        android:clipChildren="true"
+        app:layout_constraintBottom_toTopOf="@id/bottom_controls"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/toolbar">
 
-        <TextView
-            android:id="@+id/tv_size_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="32px"
-            android:textColor="?attr/textMuted"
-            android:textSize="12sp"
-            android:minWidth="52dp" />
+        <!-- Background image layer -->
+        <ImageView
+            android:id="@+id/iv_bg_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
 
-        <SeekBar
-            android:id="@+id/seekbar_size"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:max="152"
-            android:progress="24"
-            android:progressTint="?attr/accentColor"
-            android:thumbTint="?attr/accentColor" />
+        <!-- Scrollable text edit -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
 
-        <TextView
-            android:id="@+id/btn_bold"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginStart="8dp"
-            android:gravity="center"
-            android:text="B"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="?attr/textMuted"
-            android:background="@drawable/bg_style_btn"
-            android:clickable="true"
-            android:focusable="true" />
+            <EditText
+                android:id="@+id/et_preview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="200dp"
+                android:padding="24dp"
+                android:background="@null"
+                android:textColor="?attr/textPrimary"
+                android:textSize="32sp"
+                android:gravity="top|start"
+                android:hint="Tap to type…"
+                android:textColorHint="?attr/textMuted"
+                android:inputType="textMultiLine|textCapSentences"
+                android:lineSpacingMultiplier="1.4" />
 
-        <TextView
-            android:id="@+id/btn_italic"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginStart="6dp"
-            android:gravity="center"
-            android:text="I"
-            android:textSize="16sp"
-            android:textStyle="italic"
-            android:fontFamily="serif"
-            android:textColor="?attr/textMuted"
-            android:background="@drawable/bg_style_btn"
-            android:clickable="true"
-            android:focusable="true" />
+        </ScrollView>
 
-    </LinearLayout>
+    </FrameLayout>
 
-    <View
-        android:id="@+id/divider"
+    <!-- ── Bottom controls panel ───────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/bottom_controls"
         android:layout_width="0dp"
-        android:layout_height="1dp"
-        android:background="?attr/dividerColor"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/controls_bar" />
-
-    <ScrollView
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:fillViewport="true"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="?attr/bgSurface"
+        android:elevation="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/divider">
+        app:layout_constraintStart_toStartOf="parent">
 
-        <EditText
-            android:id="@+id/et_preview"
+        <!-- Divider top -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?attr/dividerColor" />
+
+        <!-- Font size row -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minHeight="300dp"
-            android:padding="24dp"
-            android:background="@null"
-            android:textColor="?attr/textPrimary"
-            android:textSize="32sp"
-            android:gravity="top|start"
-            android:hint="@string/tap_to_type"
-            android:textColorHint="?attr/textMuted"
-            android:inputType="textMultiLine|textCapSentences"
-            android:lineSpacingMultiplier="1.4" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="6dp">
 
-    </ScrollView>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Size"
+                android:textColor="?attr/textMuted"
+                android:textSize="12sp"
+                android:layout_marginEnd="8dp" />
+
+            <SeekBar
+                android:id="@+id/seekbar_size"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="152"
+                android:progress="24"
+                android:progressTint="?attr/accentColor"
+                android:thumbTint="?attr/accentColor" />
+
+            <TextView
+                android:id="@+id/tv_size_label"
+                android:layout_width="48dp"
+                android:layout_height="wrap_content"
+                android:text="32px"
+                android:textColor="?attr/textMuted"
+                android:textSize="12sp"
+                android:gravity="end"
+                android:layout_marginStart="8dp" />
+
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?attr/dividerColor" />
+
+        <!-- Formatting toolbar (scrollable) -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <!-- Bold -->
+                <TextView
+                    android:id="@+id/btn_bold"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:gravity="center"
+                    android:text="B"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/textMuted"
+                    android:background="@drawable/bg_style_btn"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:layout_marginEnd="6dp" />
+
+                <!-- Italic -->
+                <TextView
+                    android:id="@+id/btn_italic"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:gravity="center"
+                    android:text="I"
+                    android:textSize="17sp"
+                    android:textStyle="italic"
+                    android:fontFamily="serif"
+                    android:textColor="?attr/textMuted"
+                    android:background="@drawable/bg_style_btn"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:layout_marginEnd="12dp" />
+
+                <!-- Divider pip -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="28dp"
+                    android:background="?attr/dividerColor"
+                    android:layout_marginEnd="12dp" />
+
+                <!-- Font Color -->
+                <LinearLayout
+                    android:id="@+id/btn_font_color"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:layout_marginEnd="4dp">
+
+                    <ImageView
+                        android:id="@+id/iv_font_color_icon"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_font_color"
+                        app:tint="?attr/textSecondary" />
+
+                    <View
+                        android:id="@+id/v_font_color_swatch"
+                        android:layout_width="22dp"
+                        android:layout_height="3dp"
+                        android:layout_marginTop="2dp"
+                        android:background="#000000" />
+
+                </LinearLayout>
+
+                <!-- Background Color -->
+                <LinearLayout
+                    android:id="@+id/btn_bg_color"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:layout_marginEnd="4dp">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_bg_color"
+                        app:tint="?attr/textSecondary" />
+
+                    <View
+                        android:id="@+id/v_bg_color_swatch"
+                        android:layout_width="22dp"
+                        android:layout_height="3dp"
+                        android:layout_marginTop="2dp"
+                        android:background="#FFFFFF" />
+
+                </LinearLayout>
+
+                <!-- Background Image -->
+                <LinearLayout
+                    android:id="@+id/btn_bg_image"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:layout_marginEnd="4dp">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_image"
+                        app:tint="?attr/textSecondary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Image"
+                        android:textColor="?attr/textMuted"
+                        android:textSize="9sp"
+                        android:layout_marginTop="1dp" />
+
+                </LinearLayout>
+
+                <!-- Capture -->
+                <LinearLayout
+                    android:id="@+id/btn_capture"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:layout_marginEnd="4dp">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_capture"
+                        app:tint="?attr/textSecondary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Save"
+                        android:textColor="?attr/textMuted"
+                        android:textSize="9sp"
+                        android:layout_marginTop="1dp" />
+
+                </LinearLayout>
+
+                <!-- Reset -->
+                <LinearLayout
+                    android:id="@+id/btn_reset"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_reset"
+                        app:tint="?attr/textSecondary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Reset"
+                        android:textColor="?attr/textMuted"
+                        android:textSize="9sp"
+                        android:layout_marginTop="1dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+        </HorizontalScrollView>
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

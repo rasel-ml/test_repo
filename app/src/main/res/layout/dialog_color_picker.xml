@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="?attr/bgSurface">
+
+    <!-- Header -->
+    <TextView
+        android:id="@+id/tv_picker_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Choose Color"
+        android:textColor="?attr/textPrimary"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="14dp" />
+
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/dividerColor"/>
+
+    <!-- Color swatches grid -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="?attr/bgElevated"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="4dp">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="10dp">
+            <View android:id="@+id/swatch_black"   android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:layout_marginEnd="6dp" android:background="#000000" />
+            <View android:id="@+id/swatch_white"   android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:layout_marginEnd="6dp" android:background="#FFFFFF" />
+            <View android:id="@+id/swatch_red"     android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:layout_marginEnd="6dp" android:background="#F44336" />
+            <View android:id="@+id/swatch_orange"  android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:layout_marginEnd="6dp" android:background="#FF9800" />
+            <View android:id="@+id/swatch_yellow"  android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:background="#FFEB3B" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="10dp">
+            <View android:id="@+id/swatch_green"   android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:layout_marginEnd="6dp" android:background="#4CAF50" />
+            <View android:id="@+id/swatch_teal"    android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:layout_marginEnd="6dp" android:background="#009688" />
+            <View android:id="@+id/swatch_blue"    android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:layout_marginEnd="6dp" android:background="#2196F3" />
+            <View android:id="@+id/swatch_purple"  android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:layout_marginEnd="6dp" android:background="#9C27B0" />
+            <View android:id="@+id/swatch_pink"    android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:background="#E91E63" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="14dp">
+            <View android:id="@+id/swatch_gray_dark"  android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:layout_marginEnd="6dp" android:background="#424242" />
+            <View android:id="@+id/swatch_gray"       android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:layout_marginEnd="6dp" android:background="#9E9E9E" />
+            <View android:id="@+id/swatch_gray_light" android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:layout_marginEnd="6dp" android:background="#F5F5F5" />
+            <View android:id="@+id/swatch_brown"      android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:layout_marginEnd="6dp" android:background="#795548" />
+            <View android:id="@+id/swatch_transparent" android:layout_width="0dp" android:layout_height="40dp" android:layout_weight="1" android:background="@drawable/ic_transparent_swatch" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/dividerColor"/>
+
+    <!-- Cancel -->
+    <TextView
+        android:id="@+id/btn_picker_cancel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Cancel"
+        android:textColor="?attr/textMuted"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:padding="14dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/bgSurface" />
+
+</LinearLayout>
