@@ -63,25 +63,93 @@ data class FontItem(
 }
 
 data class AppSettings(
-    val langSamples: Map<String, String> = mapOf(
-        "English" to "The quick brown fox jumps over the lazy dog 0123456789",
-        "Bengali" to "আমার সোনার বাংলা আমি তোমায় ভালোবাসি"
-    ),
+    // langSamples: keyed by script code (e.g. "en", "hi"). Values are the sample texts.
+    val langSamples: Map<String, String> = defaultLangSamples(),
+    // User-defined priority order of script codes. Drives chip order and preview priority.
+    val scriptOrder: List<String> = defaultLangSamples().keys.toList(),
     val samplePriority: SamplePriority = SamplePriority.METADATA_FIRST,
     val glyphShowAll: Boolean = false,
-    val defaultLang: String = "English",
+    // Legacy kept for Gson backward compat
+    val defaultLangs: List<String> = listOf("en"),
+    val defaultLang: String = "en",
     val folderRecursive: Boolean = true,
     val colorTheme: ColorTheme = ColorTheme.GREEN,
     val darkMode: Boolean = false,
     val followSystem: Boolean = false,
-    // New fields
-    val themeMode: ThemeMode = ThemeMode.DAY,   // replaces followSystem+darkMode
-    val preferMetaSample: Boolean = true,        // replaces 4-option SamplePriority
-    val showFullFontName: Boolean = false,        // new display option
-    val langCoverageThreshold: Int = 40,          // % threshold for script detection
-    // Legacy (kept for Gson backward compat)
+    val themeMode: ThemeMode = ThemeMode.DAY,
+    val preferMetaSample: Boolean = true,
+    val showFullFontName: Boolean = false,
+    val langCoverageThreshold: Int = 40,
+    // Legacy
     val theme: AppTheme = AppTheme.DAY
 )
+
+/** Built-in sample texts for all 29 scripts in ScriptCoverageAnalyzer */
+fun defaultLangSamples(): Map<String, String> = linkedMapOf(
+    "en"   to "The quick brown fox jumps over the lazy dog",
+    "bn"   to "আমার সোনার বাংলা আমি তোমায় ভালোবাসি",
+    "hi"   to "सभी मनुष्यों को गौरव और अधिकारों के मामले में जन्मजात स्वतन्त्रता",
+    "ar"   to "الحروف العربية جميلة ومتنوعة في أشكالها",
+    "he"   to "כָּל בְּנֵי הָאָדָם נוֹלְדוּ בְּנֵי חוֹרִין",
+    "zh"   to "人人生而自由，在尊嚴和權利上一律平等",
+    "ja"   to "いろはにほへとちりぬるをわかよたれそ",
+    "ko"   to "나랏말싸미 듕귁에 달아 문자와로 서로 사맛디",
+    "ta"   to "அனைத்து மனிதர்களும் சுதந்திரமாகவே பிறக்கின்றனர்",
+    "te"   to "అన్ని మానవులు స్వేచ్ఛగా జన్మిస్తారు",
+    "kn"   to "ಎಲ್ಲಾ ಮಾನವರೂ ಸ್ವತಂತ್ರರಾಗಿ ಜನಿಸಿದ್ದಾರೆ",
+    "ml"   to "എല്ലാ മനുഷ്യരും സ്വതന്ത്രരായി ജനിക്കുന്നു",
+    "gu"   to "બધા મનુષ્યો સ્વતંત્ર અને સમાન ગૌરવ સાથે જન્મ્યા છે",
+    "pa"   to "ਸਾਰੇ ਮਨੁੱਖ ਆਜ਼ਾਦ ਅਤੇ ਬਰਾਬਰ ਪੈਦਾ ਹੁੰਦੇ ਹਨ",
+    "or"   to "ସମସ୍ତ ମଣିଷ ସ୍ୱାଧୀନ ଭାବରେ ଜନ୍ମ ଲାଭ କରନ୍ତି",
+    "si"   to "සියලු මනුෂ්‍යයෝ නිදහස් ව උපත ලබති",
+    "th"   to "มนุษย์ทุกคนเกิดมามีอิสระและเท่าเทียมกัน",
+    "km"   to "មនុស្សទាំងអស់កើតមកមានសេរីភាព",
+    "my"   to "လူသားအားလုံးသည် လွတ်လပ်စွာမွေးဖွားလာကြသည်",
+    "ka"   to "ყველა ადამიანი იბადება თავისუფალი",
+    "hy"   to "Բոլոր մարդիկ ծնվում են ազատ",
+    "am"   to "ሁሉም ሰዎች ነፃ ሆነው ይወለዳሉ",
+    "ru"   to "Все люди рождаются свободными и равными",
+    "el"   to "Όλοι οι άνθρωποι γεννιούνται ελεύθεροι",
+    "bo"   to "མི་རིགས་ཀྱི་གོ་མཐོ་དང་ཐོབ་ཐང་གི་ཐད་ནས་རང་དབང་ཡོད།",
+    "lo"   to "ມະນຸດທຸກຄົນເກີດມາມີສິດທິເທົ່າທຽມກັນ",
+    "mn"   to "Хүн бүр төрөлхийн эрх чөлөөтэй",
+    "pl"   to "Wszyscy ludzie rodzą się wolni i równi",
+    "ipa"  to "ðə kwɪk braʊn fɒks dʒʌmps ˈoʊvər ðə ˈleɪzi dɒɡ"
+)
+
+/** Human-readable name for each script code */
+fun scriptDisplayName(code: String): String = when (code) {
+    "en"  -> "English"
+    "bn"  -> "Bengali"
+    "hi"  -> "Hindi"
+    "ar"  -> "Arabic"
+    "he"  -> "Hebrew"
+    "zh"  -> "Chinese"
+    "ja"  -> "Japanese"
+    "ko"  -> "Korean"
+    "ta"  -> "Tamil"
+    "te"  -> "Telugu"
+    "kn"  -> "Kannada"
+    "ml"  -> "Malayalam"
+    "gu"  -> "Gujarati"
+    "pa"  -> "Punjabi"
+    "or"  -> "Odia"
+    "si"  -> "Sinhala"
+    "th"  -> "Thai"
+    "km"  -> "Khmer"
+    "my"  -> "Burmese"
+    "ka"  -> "Georgian"
+    "hy"  -> "Armenian"
+    "am"  -> "Amharic"
+    "ru"  -> "Russian"
+    "el"  -> "Greek"
+    "bo"  -> "Tibetan"
+    "lo"  -> "Lao"
+    "mn"  -> "Mongolian"
+    "pl"  -> "Polish"
+    "ipa" -> "IPA"
+    else  -> code.uppercase()
+}
 
 enum class SamplePriority { METADATA_FIRST, USER_FIRST, ALWAYS_USER, ALWAYS_META }
 enum class AppTheme { SYSTEM, DAY, NIGHT }
