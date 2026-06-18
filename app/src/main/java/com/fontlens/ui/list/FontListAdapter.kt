@@ -3,7 +3,6 @@ package com.fontlens.ui.list
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -34,7 +33,7 @@ class FontListAdapter(
     var selectionMode = false
         private set
 
-    /** Remembers which script chip is active per font id */
+    /** Active script index per font id. -1 means "Default" (embedded) is active. */
     private val activeScriptIndex = mutableMapOf<String, Int>()
 
     fun exitSelectionMode() {
@@ -70,7 +69,7 @@ class FontListAdapter(
         private const val TYPE_HEADER = 1
         val DIFF = object : DiffUtil.ItemCallback<FontListItem>() {
             override fun areItemsTheSame(a: FontListItem, b: FontListItem) = when {
-                a is FontListItem.Font   && b is FontListItem.Font   -> a.font.id == b.font.id
+                a is FontListItem.Font         && b is FontListItem.Font         -> a.font.id == b.font.id
                 a is FontListItem.FolderHeader && b is FontListItem.FolderHeader -> a.path == b.path
                 else -> false
             }
@@ -83,7 +82,7 @@ class FontListAdapter(
         is FontListItem.FolderHeader -> TYPE_HEADER
     }
 
-    inner class FontVH(val binding: ItemFontCardBinding)   : RecyclerView.ViewHolder(binding.root)
+    inner class FontVH(val binding: ItemFontCardBinding)       : RecyclerView.ViewHolder(binding.root)
     inner class HeaderVH(val binding: ItemFolderHeaderBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
@@ -99,76 +98,75 @@ class FontListAdapter(
         }
     }
 
-    // ── Main bind ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────
+    // Main bind
+    // ─────────────────────────────────────────────────────────────────────
 
     private fun bindFont(holder: FontVH, font: FontItem) {
         val b   = holder.binding
         val m   = font.effectiveMeta
         val p   = ThemeManager.activePalette
         val ctx = holder.itemView.context
-        val dp  = ctx.resources.displayMetrics.density
 
-        // Font name
+        // ── Font name ─────────────────────────────────────────────────────
         val showFull = FontRepository.settings.showFullFontName
         b.tvFontName.text = if (showFull) m.fullName.ifEmpty { m.family.ifEmpty { font.displayName } }
                             else m.family.ifEmpty { font.displayName }
 
-        // Subtitle
+        // ── Subtitle ──────────────────────────────────────────────────────
         val sub = buildString {
             if (m.weightName.isNotEmpty() && m.weightName != "Regular") append(m.weightName)
             if (m.subfamily.isNotEmpty() && m.subfamily != "Regular") {
                 if (isNotEmpty()) append(" · "); append(m.subfamily)
             }
         }
-        b.tvFontSub.text = sub
+        b.tvFontSub.text       = sub
         b.tvFontSub.visibility = if (sub.isBlank()) View.GONE else View.VISIBLE
 
-        // Ordered script codes for this font
+        // ── Script label row ──────────────────────────────────────────────
+        val s            = FontRepository.settings
         val orderedCodes = FontRepository.orderedScriptCodesForFont(font)
-        val safeActive   = activeScriptIndex.getOrDefault(font.id, 0)
-            .coerceIn(0, (orderedCodes.size - 1).coerceAtLeast(0))
-        activeScriptIndex[font.id] = safeActive
+        val hasEmbedded  = s.preferMetaSample && m.sampleText.isNotEmpty()
 
-        // Build chip row
-        buildChipRow(ctx, b, font, orderedCodes, safeActive, p, dp)
+        // Build the label list: "Default" first (if embedded available), then script names
+        // INDEX MAP: -1 = Default, 0..n-1 = orderedCodes
+        val showDefault  = hasEmbedded
 
-        // Typeface
+        // Initialise active index
+        val storedIdx = activeScriptIndex.getOrDefault(font.id, if (showDefault) -1 else 0)
+        val safeIdx   = when {
+            storedIdx == -1 && showDefault              -> -1
+            storedIdx == -1 && !showDefault             -> 0
+            storedIdx >= orderedCodes.size              -> 0
+            else                                        -> storedIdx
+        }.let { if (orderedCodes.isEmpty() && it != -1) -1 else it }
+        activeScriptIndex[font.id] = safeIdx
+
+        buildLabelRow(ctx, b, font, orderedCodes, showDefault, safeIdx, p)
+
+        // ── Typeface + preview ────────────────────────────────────────────
         val tf = TypefaceLoader.getTypeface(font.id) ?: Typeface.DEFAULT
         b.root.alpha = if (TypefaceLoader.isLoaded(font.id)) 1f else 0.6f
+        applyPreview(b, font, orderedCodes, showDefault, safeIdx, tf)
 
-        // Preview text
-        applyPreview(b, font, orderedCodes, safeActive, tf)
+        // Cycle button hidden — interaction is via label taps
+        b.btnCycleScript.visibility = View.GONE
 
-        // Cycle button (only if >1 script)
-        if (orderedCodes.size > 1) {
-            b.btnCycleScript.visibility = View.VISIBLE
-            b.btnCycleScript.setOnClickListener {
-                val next = ((activeScriptIndex[font.id] ?: 0) + 1) % orderedCodes.size
-                activeScriptIndex[font.id] = next
-                val newTf = TypefaceLoader.getTypeface(font.id) ?: Typeface.DEFAULT
-                applyPreview(b, font, orderedCodes, next, newTf)
-                refreshChipStates(ctx, b, orderedCodes, next, p, dp)
-                scrollChipIntoView(b, next)
-            }
-        } else {
-            b.btnCycleScript.visibility = View.GONE
-        }
-
-        // Selection
+        // ── Selection ─────────────────────────────────────────────────────
         val isSelected = selected.contains(font.id)
         b.root.strokeColor = if (isSelected) p.accent else p.divider
         b.root.strokeWidth = if (isSelected) 2 else 1
 
-        // Favorite
+        // ── Favorite / Remove ─────────────────────────────────────────────
         b.btnFavorite.setImageResource(if (isFavorite(font.id)) R.drawable.ic_star else R.drawable.ic_star_outline)
         b.btnFavorite.imageTintList = android.content.res.ColorStateList.valueOf(
             if (isFavorite(font.id)) p.accent else p.textMuted)
         b.btnFavorite.visibility = if (selectionMode) View.GONE else View.VISIBLE
         b.btnFavorite.setOnClickListener { if (!selectionMode) onFavoriteClick(font) }
-
         b.btnRemove.visibility = if (selectionMode) View.GONE else View.VISIBLE
         b.btnRemove.setOnClickListener { if (!selectionMode) onRemoveClick(font) }
 
+        // ── Card click / long-press ───────────────────────────────────────
         b.root.setOnClickListener {
             if (selectionMode) {
                 if (selected.contains(font.id)) selected.remove(font.id) else selected.add(font.id)
@@ -183,144 +181,187 @@ class FontListAdapter(
         }
     }
 
-    // ── Chip row ──────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────
+    // Label row  —  "Default | English | Bengali | Arabic …"
+    // Each word is a tappable span; no bg, no border.
+    // Active: accent color, bold, subtle shadow.
+    // Inactive: gray / pale, normal weight.
+    // ─────────────────────────────────────────────────────────────────────
 
-    private fun buildChipRow(
+    private fun buildLabelRow(
         ctx: Context,
         b: ItemFontCardBinding,
         font: FontItem,
         codes: List<String>,
-        activeIdx: Int,
-        p: ThemeManager.Palette,
-        dp: Float
+        showDefault: Boolean,
+        activeIdx: Int,       // -1 = Default, 0..n-1 = script code
+        p: ThemeManager.Palette
     ) {
-        if (codes.isEmpty()) { b.hsvScriptChips.visibility = View.GONE; return }
-        b.hsvScriptChips.visibility = View.VISIBLE
-        b.llScriptChips.removeAllViews()
+        val container = b.llScriptChips   // reuse existing LinearLayout inside HorizontalScrollView
+        container.removeAllViews()
 
-        codes.forEachIndexed { idx, code ->
-            val hasSample = FontRepository.getSampleForLang(code) != null
-            val chip = makeChip(ctx, code, idx == activeIdx, hasSample, dp, p)
-            chip.setOnClickListener {
-                activeScriptIndex[font.id] = idx
+        val totalLabels = (if (showDefault) 1 else 0) + codes.size
+        if (totalLabels == 0) {
+            b.hsvScriptChips.visibility = View.GONE
+            return
+        }
+        b.hsvScriptChips.visibility = View.VISIBLE
+
+        val dp = ctx.resources.displayMetrics.density
+
+        // Helper: build one label TextView
+        fun makeLabel(text: String, labelIdx: Int, hasSample: Boolean): TextView {
+            val isActive = labelIdx == activeIdx
+            val tv = TextView(ctx)
+            tv.text     = text
+            tv.textSize = 12.5f
+
+            // Style
+            styleLabel(tv, isActive, hasSample, p)
+
+            // Padding — tight, no background
+            val padH = (4f * dp).toInt()
+            val padV = (2f * dp).toInt()
+            tv.setPadding(padH, padV, padH, padV)
+
+            // Layout: wrap content, small end margin handled by separator
+            tv.layoutParams = ViewGroup.MarginLayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            tv.setOnClickListener {
+                val cur = activeScriptIndex[font.id]
+                if (cur == labelIdx) return@setOnClickListener   // already active
+                activeScriptIndex[font.id] = labelIdx
                 val tf = TypefaceLoader.getTypeface(font.id) ?: Typeface.DEFAULT
-                applyPreview(b, font, codes, idx, tf)
-                refreshChipStates(ctx, b, codes, idx, p, dp)
-                scrollChipIntoView(b, idx)
+                val newShowDefault = FontRepository.settings.preferMetaSample &&
+                        font.effectiveMeta.sampleText.isNotEmpty()
+                applyPreview(b, font, codes, newShowDefault, labelIdx, tf)
+                refreshLabelStates(b, codes, newShowDefault, labelIdx, p)
             }
-            b.llScriptChips.addView(chip)
+            return tv
+        }
+
+        // Helper: separator "|"
+        fun makeSep(): TextView {
+            val sep = TextView(ctx)
+            sep.text      = " | "
+            sep.textSize  = 12f
+            sep.setTextColor(Color.argb(80, Color.red(p.textMuted), Color.green(p.textMuted), Color.blue(p.textMuted)))
+            sep.setPadding(0, 0, 0, 0)
+            sep.layoutParams = ViewGroup.MarginLayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            return sep
+        }
+
+        var labelIdx = -1   // starts at Default
+
+        if (showDefault) {
+            container.addView(makeLabel("Default", -1, true))
+            labelIdx = -1
+        }
+
+        codes.forEachIndexed { i, code ->
+            val idx       = i                               // script index
+            val hasSample = FontRepository.getSampleForLang(code) != null
+            val name      = scriptDisplayName(code)
+
+            if (showDefault || i > 0) container.addView(makeSep())
+            container.addView(makeLabel(name, idx, hasSample))
         }
     }
 
-    private fun makeChip(
-        ctx: Context,
-        code: String,
-        isActive: Boolean,
-        hasSample: Boolean,
-        dp: Float,
-        p: ThemeManager.Palette
-    ): TextView {
-        val chip = TextView(ctx)
-        // Use full script name in UPPERCASE
-        chip.text      = scriptDisplayName(code).uppercase()
-        chip.textSize  = 12f
-        chip.letterSpacing = 0.05f
-
-        val padH = (10f * dp).toInt(); val padV = (5f * dp).toInt()
-        chip.setPadding(padH, padV, padH, padV)
-        val lp = ViewGroup.MarginLayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        lp.marginEnd = (6f * dp).toInt()
-        chip.layoutParams = lp
-
-        styleChip(chip, isActive, hasSample, dp, p)
-        return chip
-    }
-
-    private fun styleChip(
-        chip: TextView,
-        isActive: Boolean,
-        hasSample: Boolean,
-        dp: Float,
-        p: ThemeManager.Palette
-    ) {
-        val bg = GradientDrawable()
-        bg.shape = GradientDrawable.RECTANGLE
-        bg.cornerRadius = 20f * dp
-
+    private fun styleLabel(tv: TextView, isActive: Boolean, hasSample: Boolean, p: ThemeManager.Palette) {
         when {
             isActive && hasSample -> {
-                bg.setColor(p.accent)
-                bg.setStroke((1.5f * dp).toInt(), p.accent)
-                chip.setTextColor(Color.WHITE)
-                chip.alpha = 1f
+                tv.setTextColor(p.accent)
+                tv.setTypeface(tv.typeface, Typeface.BOLD)
+                tv.setShadowLayer(6f, 0f, 1f,
+                    Color.argb(60, Color.red(p.accent), Color.green(p.accent), Color.blue(p.accent)))
+                tv.alpha = 1f
             }
             isActive && !hasSample -> {
-                // Active but no sample — pale accent
-                bg.setColor(Color.argb(35, Color.red(p.accent), Color.green(p.accent), Color.blue(p.accent)))
-                bg.setStroke((1.5f * dp).toInt(), p.accent)
-                chip.setTextColor(p.accent)
-                chip.alpha = 0.55f
+                // Active but no sample — pale accent, still bold
+                tv.setTextColor(Color.argb(140, Color.red(p.accent), Color.green(p.accent), Color.blue(p.accent)))
+                tv.setTypeface(tv.typeface, Typeface.BOLD)
+                tv.setShadowLayer(0f, 0f, 0f, 0)
+                tv.alpha = 0.7f
             }
             !isActive && hasSample -> {
-                bg.setColor(Color.TRANSPARENT)
-                bg.setStroke((1f * dp).toInt(), p.border)
-                chip.setTextColor(p.textMuted)
-                chip.alpha = 1f
+                tv.setTextColor(p.textMuted)
+                tv.setTypeface(Typeface.DEFAULT, Typeface.NORMAL)
+                tv.setShadowLayer(0f, 0f, 0f, 0)
+                tv.alpha = 1f
             }
             else -> { // inactive + no sample
-                bg.setColor(Color.TRANSPARENT)
-                bg.setStroke((1f * dp).toInt(), p.divider)
-                chip.setTextColor(p.textMuted)
-                chip.alpha = 0.35f
+                tv.setTextColor(p.textMuted)
+                tv.setTypeface(Typeface.DEFAULT, Typeface.NORMAL)
+                tv.setShadowLayer(0f, 0f, 0f, 0)
+                tv.alpha = 0.35f
             }
         }
-        chip.background = bg
+        tv.background = null
     }
 
-    private fun refreshChipStates(
-        ctx: Context,
+    private fun refreshLabelStates(
         b: ItemFontCardBinding,
         codes: List<String>,
+        showDefault: Boolean,
         activeIdx: Int,
-        p: ThemeManager.Palette,
-        dp: Float
+        p: ThemeManager.Palette
     ) {
-        codes.forEachIndexed { idx, code ->
-            val chip = b.llScriptChips.getChildAt(idx) as? TextView ?: return@forEachIndexed
-            val hasSample = FontRepository.getSampleForLang(code) != null
-            chip.animate().cancel()
-            chip.animate()
-                .scaleX(if (idx == activeIdx) 1.06f else 1f)
-                .scaleY(if (idx == activeIdx) 1.06f else 1f)
-                .setDuration(140).start()
-            styleChip(chip, idx == activeIdx, hasSample, dp, p)
-        }
-    }
+        val container = b.llScriptChips
+        var viewPos   = 0
 
-    private fun scrollChipIntoView(b: ItemFontCardBinding, idx: Int) {
-        b.hsvScriptChips.post {
-            b.llScriptChips.getChildAt(idx)?.let {
-                b.hsvScriptChips.smoothScrollTo(it.left, 0)
+        // Each label is at positions: 0, 2, 4 … (separators at 1, 3, 5 …)
+        // Or if no default: 0, 2, 4 … same pattern
+        fun nextLabel(): TextView? {
+            while (viewPos < container.childCount) {
+                val v = container.getChildAt(viewPos++)
+                if (v is TextView && v.text != " | ") return v
+            }
+            return null
+        }
+
+        if (showDefault) {
+            nextLabel()?.let { tv ->
+                val hasSample = true
+                styleLabel(tv, activeIdx == -1, hasSample, p)
+                animateLabel(tv, activeIdx == -1)
+            }
+        }
+        codes.forEachIndexed { idx, code ->
+            nextLabel()?.let { tv ->
+                val hasSample = FontRepository.getSampleForLang(code) != null
+                styleLabel(tv, idx == activeIdx, hasSample, p)
+                animateLabel(tv, idx == activeIdx)
             }
         }
     }
 
-    // ── Preview text ──────────────────────────────────────────────────────
+    private fun animateLabel(tv: TextView, isActive: Boolean) {
+        tv.animate().cancel()
+        tv.animate().scaleX(if (isActive) 1.08f else 1f)
+                    .scaleY(if (isActive) 1.08f else 1f)
+                    .setDuration(150).start()
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Preview text
+    // ─────────────────────────────────────────────────────────────────────
 
     private fun applyPreview(
         b: ItemFontCardBinding,
         font: FontItem,
         codes: List<String>,
-        activeIdx: Int,
+        showDefault: Boolean,
+        activeIdx: Int,   // -1 = Default
         tf: Typeface
     ) {
-        val s = FontRepository.settings
         val text = when {
-            // Built-in meta sample: highest priority when switch is ON, no script chip active
-            s.preferMetaSample && font.effectiveMeta.sampleText.isNotEmpty() ->
+            activeIdx == -1 && showDefault ->
                 font.effectiveMeta.sampleText
-            codes.isNotEmpty() -> {
+            codes.isNotEmpty() && activeIdx in codes.indices -> {
                 val code = codes[activeIdx]
                 FontRepository.getSampleForLang(code) ?: getSample(font)
             }

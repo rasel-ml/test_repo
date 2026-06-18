@@ -70,12 +70,12 @@
             android:textSize="11sp"
             android:visibility="gone" />
 
-        <!-- Row 3: Script chip row (horizontally scrollable) -->
+        <!-- Row 3: Script label row — pipe-separated tappable names -->
         <HorizontalScrollView
             android:id="@+id/hsv_script_chips"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="7dp"
             android:scrollbars="none"
             android:visibility="gone">
 

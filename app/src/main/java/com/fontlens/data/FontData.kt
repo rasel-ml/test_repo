@@ -77,7 +77,7 @@ data class AppSettings(
     val darkMode: Boolean = false,
     val followSystem: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.DAY,
-    val preferMetaSample: Boolean = true,
+    val preferMetaSample: Boolean = false,
     val showFullFontName: Boolean = false,
     val langCoverageThreshold: Int = 40,
     // Legacy
