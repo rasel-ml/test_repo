@@ -31,7 +31,8 @@ data class FontMeta(
     val isItalic: Boolean = false,
     val isRegular: Boolean = true,
     val tables: List<String> = emptyList(),
-    val supportedChars: List<Int> = emptyList()
+    val supportedChars: List<Int> = emptyList(),
+    val scriptCodes: List<String> = emptyList()
 )
 
 data class FontItem(
@@ -77,6 +78,7 @@ data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.DAY,   // replaces followSystem+darkMode
     val preferMetaSample: Boolean = true,        // replaces 4-option SamplePriority
     val showFullFontName: Boolean = false,        // new display option
+    val langCoverageThreshold: Int = 40,          // % threshold for script detection
     // Legacy (kept for Gson backward compat)
     val theme: AppTheme = AppTheme.DAY
 )

@@ -245,6 +245,82 @@
             </com.google.android.material.card.MaterialCardView>
 
             <!-- ══════════════════════════════════════════════════════════
+                 SCRIPT DETECTION SECTION
+            ══════════════════════════════════════════════════════════ -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SCRIPT DETECTION"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="11sp"
+                android:letterSpacing="0.12"
+                android:textAllCaps="true"
+                android:layout_marginStart="4dp"
+                android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                app:cardBackgroundColor="?attr/bgSurface"
+                app:strokeColor="?attr/dividerColor"
+                app:strokeWidth="1dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Coverage Threshold"
+                        android:textColor="?attr/textPrimary"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Minimum % of a script&#39;s Unicode range a font must cover to be listed as supporting that language"
+                        android:textColor="?attr/textMuted"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginBottom="12dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <SeekBar
+                            android:id="@+id/seekbar_lang_threshold"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:max="100"
+                            android:progress="40"
+                            android:layout_marginEnd="12dp" />
+
+                        <TextView
+                            android:id="@+id/tv_lang_threshold_value"
+                            android:layout_width="40dp"
+                            android:layout_height="wrap_content"
+                            android:text="40%"
+                            android:textColor="?attr/colorPrimary"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:gravity="end" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ══════════════════════════════════════════════════════════
                  SAMPLE TEXT SECTION
             ══════════════════════════════════════════════════════════ -->
             <TextView

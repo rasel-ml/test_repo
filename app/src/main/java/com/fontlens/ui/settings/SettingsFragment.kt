@@ -43,6 +43,7 @@ class SettingsFragment : Fragment() {
         renderThemeModeSpinner(s)
         renderShowFullNameSwitch(s)
         renderGlyphSwitch(s)
+        renderThresholdSeekbar(s)
         renderPreferMetaSwitch(s)
         renderLangSpinner(s)
         renderLangList(s)
@@ -194,6 +195,28 @@ class SettingsFragment : Fragment() {
             FontRepository.settings = FontRepository.settings.copy(glyphShowAll = checked)
             FontRepository.saveSettings(requireContext())
         }
+    }
+
+    // ── Language coverage threshold seekbar ──────────────────────────────
+
+    private fun renderThresholdSeekbar(s: AppSettings) {
+        binding.seekbarLangThreshold.progress = s.langCoverageThreshold
+        binding.tvLangThresholdValue.text = "${s.langCoverageThreshold}%"
+        binding.seekbarLangThreshold.setOnSeekBarChangeListener(
+            object : android.widget.SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                    if (!fromUser) return
+                    val clamped = progress.coerceAtLeast(1)
+                    binding.tvLangThresholdValue.text = "$clamped%"
+                }
+                override fun onStartTrackingTouch(sb: android.widget.SeekBar?) {}
+                override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {
+                    val value = (sb?.progress ?: s.langCoverageThreshold).coerceAtLeast(1)
+                    FontRepository.settings = FontRepository.settings.copy(langCoverageThreshold = value)
+                    FontRepository.saveSettings(requireContext())
+                }
+            }
+        )
     }
 
     // ── Prefer meta sample switch ─────────────────────────────────────────

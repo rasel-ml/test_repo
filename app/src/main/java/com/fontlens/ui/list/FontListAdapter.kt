@@ -108,6 +108,10 @@ class FontListAdapter(
                 b.tvFontSub.text = buildString {
                     if (m.weightName.isNotEmpty()) append(m.weightName)
                     if (m.subfamily.isNotEmpty() && m.subfamily != "Regular") append(" · ${m.subfamily}")
+                    if (m.scriptCodes.isNotEmpty()) {
+                        if (isNotEmpty()) append("  |  ")
+                        append(m.scriptCodes.joinToString(" "))
+                    }
                 }
                 b.tvFontSub.visibility = if (b.tvFontSub.text.isBlank()) View.GONE else View.VISIBLE
 
