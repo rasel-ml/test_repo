@@ -37,7 +37,6 @@ class SettingsFragment : Fragment() {
         val s = FontRepository.settings
         renderColorChips(s)
         renderThemeModeSpinner(s)
-        renderShowFullNameSwitch(s)
         renderGlyphSwitch(s)
         renderBuiltinSampleSwitch(s)
         renderEditSamplesRow()
@@ -143,16 +142,6 @@ class SettingsFragment : Fragment() {
                 }
                 override fun onNothingSelected(p0: android.widget.AdapterView<*>?) {}
             }
-    }
-
-    // ── Show full font name ───────────────────────────────────────────────
-
-    private fun renderShowFullNameSwitch(s: AppSettings) {
-        binding.switchShowFullName.isChecked = s.showFullFontName
-        binding.switchShowFullName.setOnCheckedChangeListener { _, checked ->
-            FontRepository.settings = FontRepository.settings.copy(showFullFontName = checked)
-            FontRepository.saveSettings(requireContext())
-        }
     }
 
     // ── Glyph switch ──────────────────────────────────────────────────────

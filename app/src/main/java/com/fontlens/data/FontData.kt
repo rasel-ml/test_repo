@@ -78,7 +78,6 @@ data class AppSettings(
     val followSystem: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.DAY,
     val preferMetaSample: Boolean = false,
-    val showFullFontName: Boolean = false,
     val langCoverageThreshold: Int = 40,
     // Legacy
     val theme: AppTheme = AppTheme.DAY
@@ -86,69 +85,65 @@ data class AppSettings(
 
 /** Built-in sample texts for all 29 scripts in ScriptCoverageAnalyzer */
 fun defaultLangSamples(): Map<String, String> = linkedMapOf(
-    "en"   to "The quick brown fox jumps over the lazy dog",
-    "bn"   to "আমার সোনার বাংলা আমি তোমায় ভালোবাসি",
-    "hi"   to "सभी मनुष्यों को गौरव और अधिकारों के मामले में जन्मजात स्वतन्त्रता",
-    "ar"   to "الحروف العربية جميلة ومتنوعة في أشكالها",
-    "he"   to "כָּל בְּנֵי הָאָדָם נוֹלְדוּ בְּנֵי חוֹרִין",
-    "zh"   to "人人生而自由，在尊嚴和權利上一律平等",
-    "ja"   to "いろはにほへとちりぬるをわかよたれそ",
-    "ko"   to "나랏말싸미 듕귁에 달아 문자와로 서로 사맛디",
-    "ta"   to "அனைத்து மனிதர்களும் சுதந்திரமாகவே பிறக்கின்றனர்",
-    "te"   to "అన్ని మానవులు స్వేచ్ఛగా జన్మిస్తారు",
-    "kn"   to "ಎಲ್ಲಾ ಮಾನವರೂ ಸ್ವತಂತ್ರರಾಗಿ ಜನಿಸಿದ್ದಾರೆ",
-    "ml"   to "എല്ലാ മനുഷ്യരും സ്വതന്ത്രരായി ജനിക്കുന്നു",
-    "gu"   to "બધા મનુષ્યો સ્વતંત્ર અને સમાન ગૌરવ સાથે જન્મ્યા છે",
-    "pa"   to "ਸਾਰੇ ਮਨੁੱਖ ਆਜ਼ਾਦ ਅਤੇ ਬਰਾਬਰ ਪੈਦਾ ਹੁੰਦੇ ਹਨ",
-    "or"   to "ସମସ୍ତ ମଣିଷ ସ୍ୱାଧୀନ ଭାବରେ ଜନ୍ମ ଲାଭ କରନ୍ତି",
-    "si"   to "සියලු මනුෂ්‍යයෝ නිදහස් ව උපත ලබති",
-    "th"   to "มนุษย์ทุกคนเกิดมามีอิสระและเท่าเทียมกัน",
-    "km"   to "មនុស្សទាំងអស់កើតមកមានសេរីភាព",
-    "my"   to "လူသားအားလုံးသည် လွတ်လပ်စွာမွေးဖွားလာကြသည်",
-    "ka"   to "ყველა ადამიანი იბადება თავისუფალი",
-    "hy"   to "Բոլոր մարդիկ ծնվում են ազատ",
-    "am"   to "ሁሉም ሰዎች ነፃ ሆነው ይወለዳሉ",
-    "ru"   to "Все люди рождаются свободными и равными",
-    "el"   to "Όλοι οι άνθρωποι γεννιούνται ελεύθεροι",
-    "bo"   to "མི་རིགས་ཀྱི་གོ་མཐོ་དང་ཐོབ་ཐང་གི་ཐད་ནས་རང་དབང་ཡོད།",
-    "lo"   to "ມະນຸດທຸກຄົນເກີດມາມີສິດທິເທົ່າທຽມກັນ",
-    "mn"   to "Хүн бүр төрөлхийн эрх чөлөөтэй",
-    "pl"   to "Wszyscy ludzie rodzą się wolni i równi",
-    "ipa"  to "ðə kwɪk braʊn fɒks dʒʌmps ˈoʊvər ðə ˈleɪzi dɒɡ"
+    "latin"       to "The quick brown fox jumps over the lazy dog",
+    "devanagari"  to "सभी मनुष्यों को गौरव और अधिकारों के मामले में जन्मजात स्वतन्त्रता",
+    "bengali"     to "আমার সোনার বাংলা আমি তোমায় ভালোবাসি",
+    "arabic"      to "الحروف العربية جميلة ومتنوعة في أشكالها",
+    "hebrew"      to "כָּל בְּנֵי הָאָדָם נוֹלְדוּ בְּנֵי חוֹרִין",
+    "han"         to "人人生而自由，在尊嚴和權利上一律平等",
+    "kana"        to "いろはにほへとちりぬるをわかよたれそ",
+    "hangul"      to "나랏말싸미 듕귁에 달아 문자와로 서로 사맛디",
+    "tamil"       to "அனைத்து மனிதர்களும் சுதந்திரமாகவே பிறக்கின்றனர்",
+    "telugu"      to "అన్ని మానవులు స్వేచ్ఛగా జన్మిస్తారు",
+    "kannada"     to "ಎಲ್ಲಾ ಮಾನವರೂ ಸ್ವತಂತ್ರರಾಗಿ ಜನಿಸಿದ್ದಾರೆ",
+    "malayalam"   to "എല്ലാ മനുഷ്യരും സ്വതന്ത്രരായി ജനിക്കുന്നു",
+    "gujarati"    to "બધા મનુષ્યો સ્વતંત્ર અને સમાન ગૌરવ સાથે જન્મ્યા છે",
+    "gurmukhi"    to "ਸਾਰੇ ਮਨੁੱਖ ਆਜ਼ਾਦ ਅਤੇ ਬਰਾਬਰ ਪੈਦਾ ਹੁੰਦੇ ਹਨ",
+    "odia"        to "ସମସ୍ତ ମଣିଷ ସ୍ୱାଧୀନ ଭାବରେ ଜନ୍ମ ଲାଭ କରନ୍ତି",
+    "sinhala"     to "සියලු මනුෂ්‍යයෝ නිදහස් ව උපත ලබති",
+    "thai"        to "มนุษย์ทุกคนเกิดมามีอิสระและเท่าเทียมกัน",
+    "khmer"       to "មនុស្សទាំងអស់កើតមកមានសេរីភាព",
+    "myanmar"     to "လူသားအားလုံးသည် လွတ်လပ်စွာမွေးဖွားလာကြသည်",
+    "georgian"    to "ყველა ადამიანი იბადება თავისუფალი",
+    "armenian"    to "Բոլոր մարդիկ ծնվում են ազատ",
+    "ethiopic"    to "ሁሉም ሰዎች ነፃ ሆነው ይወለዳሉ",
+    "cyrillic"    to "Все люди рождаются свободными и равными",
+    "greek"       to "Όλοι οι άνθρωποι γεννιούνται ελεύθεροι",
+    "tibetan"     to "མི་རིགས་ཀྱི་གོ་མཐོ་དང་ཐོབ་ཐང་གི་ཐད་ནས་རང་དབང་ཡོད།",
+    "lao"         to "ມະນຸດທຸກຄົນເກີດມາມີສິດທິເທົ່າທຽມກັນ",
+    "mongolian"   to "Хүн бүр төрөлхийн эрх чөлөөтэй"
 )
 
-/** Human-readable name for each script code */
+/** Display name for each script code */
 fun scriptDisplayName(code: String): String = when (code) {
-    "en"  -> "English"
-    "bn"  -> "Bengali"
-    "hi"  -> "Hindi"
-    "ar"  -> "Arabic"
-    "he"  -> "Hebrew"
-    "zh"  -> "Chinese"
-    "ja"  -> "Japanese"
-    "ko"  -> "Korean"
-    "ta"  -> "Tamil"
-    "te"  -> "Telugu"
-    "kn"  -> "Kannada"
-    "ml"  -> "Malayalam"
-    "gu"  -> "Gujarati"
-    "pa"  -> "Punjabi"
-    "or"  -> "Odia"
-    "si"  -> "Sinhala"
-    "th"  -> "Thai"
-    "km"  -> "Khmer"
-    "my"  -> "Burmese"
-    "ka"  -> "Georgian"
-    "hy"  -> "Armenian"
-    "am"  -> "Amharic"
-    "ru"  -> "Russian"
-    "el"  -> "Greek"
-    "bo"  -> "Tibetan"
-    "lo"  -> "Lao"
-    "mn"  -> "Mongolian"
-    "pl"  -> "Polish"
-    "ipa" -> "IPA"
-    else  -> code.uppercase()
+    "latin"      -> "Latin"
+    "devanagari" -> "Devanagari"
+    "bengali"    -> "Bengali"
+    "arabic"     -> "Arabic"
+    "hebrew"     -> "Hebrew"
+    "han"        -> "Han"
+    "kana"       -> "Kana"
+    "hangul"     -> "Hangul"
+    "tamil"      -> "Tamil"
+    "telugu"     -> "Telugu"
+    "kannada"    -> "Kannada"
+    "malayalam"  -> "Malayalam"
+    "gujarati"   -> "Gujarati"
+    "gurmukhi"   -> "Gurmukhi"
+    "odia"       -> "Odia"
+    "sinhala"    -> "Sinhala"
+    "thai"       -> "Thai"
+    "khmer"      -> "Khmer"
+    "myanmar"    -> "Myanmar"
+    "georgian"   -> "Georgian"
+    "armenian"   -> "Armenian"
+    "ethiopic"   -> "Ethiopic"
+    "cyrillic"   -> "Cyrillic"
+    "greek"      -> "Greek"
+    "tibetan"    -> "Tibetan"
+    "lao"        -> "Lao"
+    "mongolian"  -> "Mongolian"
+    else         -> code.replaceFirstChar { it.uppercase() }
 }
 
 enum class SamplePriority { METADATA_FIRST, USER_FIRST, ALWAYS_USER, ALWAYS_META }

@@ -19,22 +19,22 @@
         android:orientation="vertical"
         android:padding="@dimen/card_padding">
 
-        <!-- Row 1: Font name + action buttons -->
+        <!-- Row 1: Font family name + grey subfamily · action buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
+            <!-- Name row: family (bold, bigger) + " · subfamily" (grey, lighter) in one line -->
             <TextView
                 android:id="@+id/tv_font_name"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textColor="?attr/textPrimary"
-                android:textSize="13sp"
-                android:letterSpacing="0.05"
-                android:textStyle="bold" />
+                android:textSize="15sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
 
             <ImageView
                 android:id="@+id/btn_remove"
@@ -60,22 +60,19 @@
 
         </LinearLayout>
 
-        <!-- Row 2: Subtitle (weight · subfamily) -->
+        <!-- tv_font_sub kept as a 0-height hidden view so existing binding refs don't crash -->
         <TextView
             android:id="@+id/tv_font_sub"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="1dp"
-            android:textColor="?attr/textMuted"
-            android:textSize="11sp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:visibility="gone" />
 
-        <!-- Row 3: Script label row — pipe-separated tappable names -->
+        <!-- Row 2: Script label row — pipe-separated tappable names -->
         <HorizontalScrollView
             android:id="@+id/hsv_script_chips"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="7dp"
+            android:layout_marginTop="5dp"
             android:scrollbars="none"
             android:visibility="gone">
 
@@ -88,7 +85,7 @@
 
         </HorizontalScrollView>
 
-        <!-- Row 4: Preview area — cycle button + text -->
+        <!-- Row 3: Preview text -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -96,7 +93,6 @@
             android:gravity="center_vertical"
             android:layout_marginTop="10dp">
 
-            <!-- Cycle script button — only shown when >1 script -->
             <TextView
                 android:id="@+id/btn_cycle_script"
                 android:layout_width="28dp"
@@ -124,7 +120,6 @@
 
         </LinearLayout>
 
-        <!-- Hidden legacy view — keeps binding from crashing -->
         <TextView
             android:id="@+id/tv_preview_small"
             android:layout_width="0dp"

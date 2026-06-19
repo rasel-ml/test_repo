@@ -2,6 +2,9 @@ package com.fontlens.ui.list
 
 import android.content.Context
 import android.graphics.Color
+import android.text.SpannableStringBuilder
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
@@ -108,20 +111,26 @@ class FontListAdapter(
         val p   = ThemeManager.activePalette
         val ctx = holder.itemView.context
 
-        // ── Font name ─────────────────────────────────────────────────────
-        val showFull = FontRepository.settings.showFullFontName
-        b.tvFontName.text = if (showFull) m.fullName.ifEmpty { m.family.ifEmpty { font.displayName } }
-                            else m.family.ifEmpty { font.displayName }
+        // ── Font name + subfamily on one line ────────────────────────────
+        // Family name: bold, primary color, 15sp (set in XML)
+        // Subfamily:   normal weight, grey, same size — inferred from weight if absent
+        val familyName = m.family.ifEmpty { font.displayName }
+        val subfamilyRaw = m.subfamily.ifEmpty { m.weightName }
+            .let { s -> if (s == "Regular" || s.isBlank()) inferSubfamilyFromWeight(m.weight) else s }
 
-        // ── Subtitle ──────────────────────────────────────────────────────
-        val sub = buildString {
-            if (m.weightName.isNotEmpty() && m.weightName != "Regular") append(m.weightName)
-            if (m.subfamily.isNotEmpty() && m.subfamily != "Regular") {
-                if (isNotEmpty()) append(" · "); append(m.subfamily)
-            }
+        val ssb = SpannableStringBuilder()
+        ssb.append(familyName)
+        ssb.setSpan(StyleSpan(Typeface.BOLD), 0, familyName.length, 0)
+        ssb.setSpan(ForegroundColorSpan(p.textPrimary), 0, familyName.length, 0)
+
+        if (subfamilyRaw.isNotEmpty()) {
+            val dot = " · $subfamilyRaw"
+            val start = ssb.length
+            ssb.append(dot)
+            ssb.setSpan(StyleSpan(Typeface.NORMAL), start, ssb.length, 0)
+            ssb.setSpan(ForegroundColorSpan(p.textMuted), start, ssb.length, 0)
         }
-        b.tvFontSub.text       = sub
-        b.tvFontSub.visibility = if (sub.isBlank()) View.GONE else View.VISIBLE
+        b.tvFontName.text = ssb
 
         // ── Script label row ──────────────────────────────────────────────
         val s            = FontRepository.settings
@@ -344,6 +353,23 @@ class FontListAdapter(
         tv.animate().scaleX(if (isActive) 1.08f else 1f)
                     .scaleY(if (isActive) 1.08f else 1f)
                     .setDuration(150).start()
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Weight → subfamily inference
+    // ─────────────────────────────────────────────────────────────────────
+
+    private fun inferSubfamilyFromWeight(weight: Int): String = when {
+        weight <= 100 -> "Thin"
+        weight <= 200 -> "ExtraLight"
+        weight <= 300 -> "Light"
+        weight in 301..449 -> ""          // Regular — omit, not useful
+        weight in 450..549 -> "Medium"
+        weight in 550..649 -> "SemiBold"
+        weight in 650..749 -> "Bold"
+        weight in 750..849 -> "ExtraBold"
+        weight >= 850      -> "Black"
+        else -> ""
     }
 
     // ─────────────────────────────────────────────────────────────────────
