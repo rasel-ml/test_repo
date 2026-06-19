@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import android.text.SpannableStringBuilder
 import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
 import android.graphics.Typeface
 import android.view.LayoutInflater
@@ -130,6 +131,7 @@ class FontListAdapter(
             ssb.append(dot)
             ssb.setSpan(StyleSpan(Typeface.NORMAL), start, ssb.length, 0)
             ssb.setSpan(ForegroundColorSpan(p.textMuted), start, ssb.length, 0)
+            ssb.setSpan(RelativeSizeSpan(0.82f), start, ssb.length, 0)  // ~12.3sp vs 15sp
         }
         b.tvFontName.text = ssb
         b.tvFontSub.visibility = android.view.View.GONE   // no longer used
@@ -397,7 +399,7 @@ class FontListAdapter(
         weight <= 100 -> "Thin"
         weight <= 200 -> "ExtraLight"
         weight <= 300 -> "Light"
-        weight in 301..449 -> "Regular"          // Regular — omit, not useful
+        weight in 301..449 -> ""          // Regular — omit, not useful
         weight in 450..549 -> "Medium"
         weight in 550..649 -> "SemiBold"
         weight in 650..749 -> "Bold"

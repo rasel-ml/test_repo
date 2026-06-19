@@ -19,49 +19,19 @@
         android:orientation="vertical"
         android:padding="@dimen/card_padding">
 
-        <!-- Row 1: Names (left) + action buttons (right) -->
+        <!-- Row 1: [type badge + names] (left) + [fav, delete] (right) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <!-- Left: family name + subfamily below -->
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:layout_marginEnd="8dp">
-
-                <!-- Family name: bold, 15sp -->
-                <TextView
-                    android:id="@+id/tv_font_name"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textColor="?attr/textPrimary"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:maxLines="1"
-                    android:ellipsize="end" />
-
-                <!-- tv_font_sub: kept for binding compat, not displayed -->
-                <TextView
-                    android:id="@+id/tv_font_sub"
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"
-                    android:visibility="gone" />
-
-            </LinearLayout>
-
-            <!-- Right: font-type badge, favorite, delete — in that order -->
-
-            <!-- Font type badge (TTF / OTF / etc.) — same height as icon buttons -->
+            <!-- Font type badge — wrap_content, sits before the name -->
             <TextView
                 android:id="@+id/tv_font_type"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_marginEnd="6dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
                 android:gravity="center"
                 android:textSize="9sp"
                 android:textStyle="bold"
@@ -69,10 +39,30 @@
                 android:letterSpacing="0.08"
                 android:fontFamily="monospace"
                 android:textColor="?attr/colorPrimary"
-                android:paddingStart="9dp"
-                android:paddingEnd="9dp"
+                android:paddingStart="7dp"
+                android:paddingEnd="7dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
                 android:clickable="false"
                 android:focusable="false" />
+
+            <!-- Family · Subfamily name (takes remaining space) -->
+            <TextView
+                android:id="@+id/tv_font_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="?attr/textPrimary"
+                android:textSize="15sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <!-- tv_font_sub: kept for binding compat only -->
+            <TextView
+                android:id="@+id/tv_font_sub"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
 
             <!-- Favorite -->
             <ImageView
@@ -80,6 +70,7 @@
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:padding="7dp"
+                android:layout_marginStart="6dp"
                 android:layout_marginEnd="6dp"
                 android:src="@drawable/ic_star_outline"
                 android:scaleType="fitCenter"
