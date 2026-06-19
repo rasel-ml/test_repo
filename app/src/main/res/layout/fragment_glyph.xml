@@ -6,6 +6,10 @@
     android:layout_height="match_parent"
     android:background="?attr/bgPrimary">
 
+    <!-- ══ TOOLBAR ══════════════════════════════════════════════════════════
+         Left:  ← back | "Glyph Map" title | [count badge]
+         Right: [Aa] [UN] search-mode toggles | search box
+    ════════════════════════════════════════════════════════════════════════ -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="0dp"
@@ -16,57 +20,132 @@
         app:layout_constraintTop_toTopOf="parent"
         app:navigationIcon="@drawable/ic_back"
         app:navigationIconTint="?attr/textSecondary"
-        app:title="@string/glyph_map"
+        app:title="Glyph Map"
         app:titleTextColor="?attr/textPrimary">
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_search"
-            android:layout_width="140dp"
-            android:layout_height="36dp"
-            android:layout_gravity="end"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_search_small"
-            android:hint="U+0041…"
-            android:textColorHint="?attr/textMuted"
-            android:textColor="?attr/textPrimary"
-            android:textSize="13sp"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:imeOptions="actionSearch"
-            android:inputType="text"
-            android:singleLine="true" />
+        <!-- Total glyph count badge — sits right after title via Toolbar child -->
+        <TextView
+            android:id="@+id/tv_glyph_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="6dp"
+            android:minWidth="28dp"
+            android:gravity="center"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="0" />
 
+        <!-- Right-side toolbar content: search mode + search box -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|center_vertical"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginEnd="8dp">
+
+            <!-- Char search toggle "Aa" -->
+            <TextView
+                android:id="@+id/btn_search_char"
+                android:layout_width="34dp"
+                android:layout_height="28dp"
+                android:gravity="center"
+                android:text="Aa"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="?attr/textMuted"
+                android:layout_marginEnd="4dp"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <!-- Unicode search toggle "UN" -->
+            <TextView
+                android:id="@+id/btn_search_unicode"
+                android:layout_width="34dp"
+                android:layout_height="28dp"
+                android:gravity="center"
+                android:text="UN"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="?attr/textMuted"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <!-- Search box -->
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_search"
+                android:layout_width="130dp"
+                android:layout_height="34dp"
+                android:background="@drawable/bg_search_small"
+                android:hint="Search…"
+                android:textColorHint="?attr/textMuted"
+                android:textColor="?attr/textPrimary"
+                android:textSize="13sp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:imeOptions="actionSearch"
+                android:inputType="text"
+                android:singleLine="true" />
+
+        </LinearLayout>
     </androidx.appcompat.widget.Toolbar>
 
-    <!-- Stats bar -->
-    <TextView
-        android:id="@+id/tv_glyph_count"
+    <!-- ══ SCRIPT HEADER BAR ═══════════════════════════════════════════════
+         Script name (large) + glyph count (small, below)
+    ════════════════════════════════════════════════════════════════════════ -->
+    <LinearLayout
+        android:id="@+id/script_header"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:padding="8dp"
+        android:orientation="vertical"
         android:paddingStart="16dp"
-        android:textColor="?attr/textMuted"
-        android:textSize="12sp"
-        android:letterSpacing="0.05"
+        android:paddingEnd="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
         android:background="?attr/bgSidebar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/toolbar" />
+        app:layout_constraintTop_toBottomOf="@id/toolbar">
 
-    <!-- Glyph grid -->
+        <TextView
+            android:id="@+id/tv_script_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="?attr/textPrimary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_script_stats"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textColor="?attr/textMuted"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+    <!-- ══ GLYPH GRID ════════════════════════════════════════════════════ -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_glyphs"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="80dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="4dp"
         android:clipToPadding="false"
         app:layout_constraintBottom_toTopOf="@id/pagination_bar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_glyph_count" />
+        app:layout_constraintTop_toBottomOf="@id/script_header" />
 
-    <!-- Pagination -->
+    <!-- ══ PAGINATION BAR ════════════════════════════════════════════════ -->
     <LinearLayout
         android:id="@+id/pagination_bar"
         android:layout_width="0dp"

@@ -16,17 +16,19 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:gravity="center"
-        android:textSize="26sp"
+        android:textSize="24sp"
         android:textColor="?attr/textPrimary"
         android:maxLines="1" />
 
     <TextView
         android:id="@+id/tv_codepoint"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="8sp"
+        android:gravity="center"
+        android:textSize="7sp"
         android:textColor="?attr/textMuted"
         android:fontFamily="monospace"
-        android:maxLines="1" />
+        android:maxLines="1"
+        android:ellipsize="none" />
 
 </LinearLayout>
