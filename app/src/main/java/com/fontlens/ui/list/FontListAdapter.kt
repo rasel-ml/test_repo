@@ -2,6 +2,9 @@ package com.fontlens.ui.list
 
 import android.content.Context
 import android.graphics.Color
+import android.text.SpannableStringBuilder
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
@@ -108,25 +111,28 @@ class FontListAdapter(
         val p   = ThemeManager.activePalette
         val ctx = holder.itemView.context
 
-        // ── Family name ───────────────────────────────────────────────────
-        // Priority: family → fullName → display name (file name without extension)
+        // ── Family name · Subfamily on one line ──────────────────────────
+        // Name priority: family → fullName → display name (file name without extension)
         val familyName = m.family.ifEmpty { m.fullName.ifEmpty { font.displayName } }
-        b.tvFontName.text = familyName
-        b.tvFontName.setTextColor(p.textPrimary)
-
-        // ── Subfamily (second line, smaller, grey) ────────────────────────
-        // Priority: subfamily field → inferred from weight → blank
+        // Subfamily priority: subfamily field → weightName → inferred from weight → blank
         val subfamilyRaw = when {
             m.subfamily.isNotEmpty() && m.subfamily != "Regular" -> m.subfamily
             m.weightName.isNotEmpty() && m.weightName != "Regular" -> m.weightName
             else -> inferSubfamilyFromWeight(m.weight)
         }
+        val ssb = SpannableStringBuilder()
+        ssb.append(familyName)
+        ssb.setSpan(StyleSpan(Typeface.BOLD), 0, familyName.length, 0)
+        ssb.setSpan(ForegroundColorSpan(p.textPrimary), 0, familyName.length, 0)
         if (subfamilyRaw.isNotEmpty()) {
-            b.tvFontSub.text = subfamilyRaw
-            b.tvFontSub.visibility = android.view.View.VISIBLE
-        } else {
-            b.tvFontSub.visibility = android.view.View.GONE
+            val dot = " · $subfamilyRaw"
+            val start = ssb.length
+            ssb.append(dot)
+            ssb.setSpan(StyleSpan(Typeface.NORMAL), start, ssb.length, 0)
+            ssb.setSpan(ForegroundColorSpan(p.textMuted), start, ssb.length, 0)
         }
+        b.tvFontName.text = ssb
+        b.tvFontSub.visibility = android.view.View.GONE   // no longer used
 
         // ── Font type badge (TTF / OTF / WOFF …) ─────────────────────────
         val ext = font.uri.path?.substringAfterLast('.')?.uppercase() ?: "TTF"
@@ -391,7 +397,7 @@ class FontListAdapter(
         weight <= 100 -> "Thin"
         weight <= 200 -> "ExtraLight"
         weight <= 300 -> "Light"
-        weight in 301..449 -> ""          // Regular — omit, not useful
+        weight in 301..449 -> "Regular"          // Regular — omit, not useful
         weight in 450..549 -> "Medium"
         weight in 550..649 -> "SemiBold"
         weight in 650..749 -> "Bold"
