@@ -26,6 +26,17 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
+            <!-- Family · Subfamily name (takes remaining space) -->
+            <TextView
+                android:id="@+id/tv_font_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="?attr/textPrimary"
+                android:textSize="15sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
             <!-- Font type badge — wrap_content, sits before the name -->
             <TextView
                 android:id="@+id/tv_font_type"
@@ -45,17 +56,6 @@
                 android:paddingBottom="4dp"
                 android:clickable="false"
                 android:focusable="false" />
-
-            <!-- Family · Subfamily name (takes remaining space) -->
-            <TextView
-                android:id="@+id/tv_font_name"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="?attr/textPrimary"
-                android:textSize="15sp"
-                android:maxLines="1"
-                android:ellipsize="end" />
 
             <!-- tv_font_sub: kept for binding compat only -->
             <TextView

@@ -117,8 +117,8 @@ class FontListAdapter(
         val familyName = m.family.ifEmpty { m.fullName.ifEmpty { font.displayName } }
         // Subfamily priority: subfamily field → weightName → inferred from weight → blank
         val subfamilyRaw = when {
-            m.subfamily.isNotEmpty() && m.subfamily != "Regular" -> m.subfamily
-            m.weightName.isNotEmpty() && m.weightName != "Regular" -> m.weightName
+            m.subfamily.isNotEmpty() -> m.subfamily
+            m.weightName.isNotEmpty() -> m.weightName
             else -> inferSubfamilyFromWeight(m.weight)
         }
         val ssb = SpannableStringBuilder()
@@ -399,7 +399,7 @@ class FontListAdapter(
         weight <= 100 -> "Thin"
         weight <= 200 -> "ExtraLight"
         weight <= 300 -> "Light"
-        weight in 301..449 -> ""          // Regular — omit, not useful
+        weight in 301..449 -> "Regular"          // Regular — omit, not useful
         weight in 450..549 -> "Medium"
         weight in 550..649 -> "SemiBold"
         weight in 650..749 -> "Bold"
