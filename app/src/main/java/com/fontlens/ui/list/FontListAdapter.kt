@@ -2,9 +2,6 @@ package com.fontlens.ui.list
 
 import android.content.Context
 import android.graphics.Color
-import android.text.SpannableStringBuilder
-import android.text.style.ForegroundColorSpan
-import android.text.style.StyleSpan
 import android.graphics.Typeface
 import android.view.LayoutInflater
 import android.view.View
@@ -111,26 +108,53 @@ class FontListAdapter(
         val p   = ThemeManager.activePalette
         val ctx = holder.itemView.context
 
-        // ── Font name + subfamily on one line ────────────────────────────
-        // Family name: bold, primary color, 15sp (set in XML)
-        // Subfamily:   normal weight, grey, same size — inferred from weight if absent
-        val familyName = m.family.ifEmpty { font.displayName }
-        val subfamilyRaw = m.subfamily.ifEmpty { m.weightName }
-            .let { s -> if (s == "Regular" || s.isBlank()) inferSubfamilyFromWeight(m.weight) else s }
+        // ── Family name ───────────────────────────────────────────────────
+        // Priority: family → fullName → display name (file name without extension)
+        val familyName = m.family.ifEmpty { m.fullName.ifEmpty { font.displayName } }
+        b.tvFontName.text = familyName
+        b.tvFontName.setTextColor(p.textPrimary)
 
-        val ssb = SpannableStringBuilder()
-        ssb.append(familyName)
-        ssb.setSpan(StyleSpan(Typeface.BOLD), 0, familyName.length, 0)
-        ssb.setSpan(ForegroundColorSpan(p.textPrimary), 0, familyName.length, 0)
-
-        if (subfamilyRaw.isNotEmpty()) {
-            val dot = " · $subfamilyRaw"
-            val start = ssb.length
-            ssb.append(dot)
-            ssb.setSpan(StyleSpan(Typeface.NORMAL), start, ssb.length, 0)
-            ssb.setSpan(ForegroundColorSpan(p.textMuted), start, ssb.length, 0)
+        // ── Subfamily (second line, smaller, grey) ────────────────────────
+        // Priority: subfamily field → inferred from weight → blank
+        val subfamilyRaw = when {
+            m.subfamily.isNotEmpty() && m.subfamily != "Regular" -> m.subfamily
+            m.weightName.isNotEmpty() && m.weightName != "Regular" -> m.weightName
+            else -> inferSubfamilyFromWeight(m.weight)
         }
-        b.tvFontName.text = ssb
+        if (subfamilyRaw.isNotEmpty()) {
+            b.tvFontSub.text = subfamilyRaw
+            b.tvFontSub.visibility = android.view.View.VISIBLE
+        } else {
+            b.tvFontSub.visibility = android.view.View.GONE
+        }
+
+        // ── Font type badge (TTF / OTF / WOFF …) ─────────────────────────
+        val ext = font.uri.path?.substringAfterLast('.')?.uppercase() ?: "TTF"
+        b.tvFontType.text = ext
+        val badgeBg = android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = 7f * ctx.resources.displayMetrics.density
+            setColor(android.graphics.Color.argb(25,
+                android.graphics.Color.red(p.accent),
+                android.graphics.Color.green(p.accent),
+                android.graphics.Color.blue(p.accent)))
+            setStroke((1f * ctx.resources.displayMetrics.density).toInt(), p.accent)
+        }
+        b.tvFontType.background = badgeBg
+        b.tvFontType.setTextColor(p.accent)
+
+        // ── Favorite / Delete button styling ─────────────────────────────
+        val dp = ctx.resources.displayMetrics.density
+        fun iconBg() = android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = 7f * dp
+            setColor(android.graphics.Color.argb(25,
+                android.graphics.Color.red(p.accent),
+                android.graphics.Color.green(p.accent),
+                android.graphics.Color.blue(p.accent)))
+        }
+        b.btnFavorite.background = iconBg()
+        b.btnRemove.background   = iconBg()
 
         // ── Script label row ──────────────────────────────────────────────
         val s            = FontRepository.settings
@@ -167,13 +191,17 @@ class FontListAdapter(
         b.root.strokeWidth = if (isSelected) 2 else 1
 
         // ── Favorite / Remove ─────────────────────────────────────────────
-        b.btnFavorite.setImageResource(if (isFavorite(font.id)) R.drawable.ic_star else R.drawable.ic_star_outline)
+        val isFav = isFavorite(font.id)
+        b.btnFavorite.setImageResource(if (isFav) R.drawable.ic_star else R.drawable.ic_star_outline)
         b.btnFavorite.imageTintList = android.content.res.ColorStateList.valueOf(
-            if (isFavorite(font.id)) p.accent else p.textMuted)
-        b.btnFavorite.visibility = if (selectionMode) View.GONE else View.VISIBLE
+            if (isFav) p.accent else p.textMuted)
+        b.btnRemove.imageTintList = android.content.res.ColorStateList.valueOf(p.accent)
+        val btnVisible = if (selectionMode) View.GONE else View.VISIBLE
+        b.tvFontType.visibility  = btnVisible
+        b.btnFavorite.visibility = btnVisible
+        b.btnRemove.visibility   = btnVisible
         b.btnFavorite.setOnClickListener { if (!selectionMode) onFavoriteClick(font) }
-        b.btnRemove.visibility = if (selectionMode) View.GONE else View.VISIBLE
-        b.btnRemove.setOnClickListener { if (!selectionMode) onRemoveClick(font) }
+        b.btnRemove.setOnClickListener   { if (!selectionMode) onRemoveClick(font) }
 
         // ── Card click / long-press ───────────────────────────────────────
         b.root.setOnClickListener {

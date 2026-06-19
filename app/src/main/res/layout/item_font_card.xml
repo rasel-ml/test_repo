@@ -19,60 +19,97 @@
         android:orientation="vertical"
         android:padding="@dimen/card_padding">
 
-        <!-- Row 1: Font family name + grey subfamily · action buttons -->
+        <!-- Row 1: Names (left) + action buttons (right) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <!-- Name row: family (bold, bigger) + " · subfamily" (grey, lighter) in one line -->
-            <TextView
-                android:id="@+id/tv_font_name"
+            <!-- Left: family name + subfamily below -->
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textSize="15sp"
-                android:maxLines="1"
-                android:ellipsize="end" />
+                android:orientation="vertical"
+                android:layout_marginEnd="8dp">
 
-            <ImageView
-                android:id="@+id/btn_remove"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:padding="7dp"
-                android:src="@drawable/ic_delete"
-                app:tint="@color/ic_delete_tint"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackgroundBorderless" />
+                <!-- Family name: bold, 15sp -->
+                <TextView
+                    android:id="@+id/tv_font_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="?attr/textPrimary"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
 
+                <!-- Subfamily: grey, 12sp, below family name -->
+                <TextView
+                    android:id="@+id/tv_font_sub"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:textColor="?attr/textMuted"
+                    android:textSize="12sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+            <!-- Right: font-type badge, favorite, delete — in that order -->
+
+            <!-- Font type badge (TTF / OTF / etc.) -->
+            <TextView
+                android:id="@+id/tv_font_type"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:textSize="9sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08"
+                android:fontFamily="monospace"
+                android:textColor="?attr/colorPrimary"
+                android:paddingStart="7dp"
+                android:paddingEnd="7dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:clickable="false"
+                android:focusable="false" />
+
+            <!-- Favorite -->
             <ImageView
                 android:id="@+id/btn_favorite"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:padding="6dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:padding="7dp"
+                android:layout_marginEnd="6dp"
                 android:src="@drawable/ic_star_outline"
-                app:tint="@color/ic_tint_muted"
+                android:scaleType="fitCenter"
                 android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackgroundBorderless" />
+                android:focusable="true" />
+
+            <!-- Delete -->
+            <ImageView
+                android:id="@+id/btn_remove"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:padding="7dp"
+                android:src="@drawable/ic_delete"
+                android:scaleType="fitCenter"
+                android:clickable="true"
+                android:focusable="true" />
 
         </LinearLayout>
-
-        <!-- tv_font_sub kept as a 0-height hidden view so existing binding refs don't crash -->
-        <TextView
-            android:id="@+id/tv_font_sub"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:visibility="gone" />
 
         <!-- Row 2: Script label row — pipe-separated tappable names -->
         <HorizontalScrollView
             android:id="@+id/hsv_script_chips"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
+            android:layout_marginTop="6dp"
             android:scrollbars="none"
             android:visibility="gone">
 
