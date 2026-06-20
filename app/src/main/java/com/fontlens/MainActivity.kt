@@ -135,7 +135,7 @@ class MainActivity : AppCompatActivity() {
             fb.btnRemoveFolder.setOnClickListener {
                 android.app.AlertDialog.Builder(ContextThemeWrapper(this, ThemeManager.currentThemeResId(this)))
                     .setTitle("Remove Folder")
-                    .setMessage("Remove "${getFolderDisplayName(uri)}" and all its fonts from library?")
+                    .setMessage("Remove \"${getFolderDisplayName(uri)}\" and all its fonts from library?")
                     .setPositiveButton("Remove") { _, _ ->
                         FontRepository.removeSavedFolder(uri, this)
                         refreshDrawer()
@@ -172,7 +172,7 @@ class MainActivity : AppCompatActivity() {
                                                 ContextThemeWrapper(this@MainActivity,
                                                     ThemeManager.currentThemeResId(this@MainActivity)))
                                                 .setTitle("Remove Sub-folder")
-                                                .setMessage("Remove "$name" fonts from library?")
+                                                .setMessage("Remove \"$name\" fonts from library?")
                                                 .setPositiveButton("Remove") { _, _ ->
                                                     // Remove fonts whose folderPath matches this sub-folder
                                                     val subPath = "/" + FolderScanner.uriToPath(subUri)
