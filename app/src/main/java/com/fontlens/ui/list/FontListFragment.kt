@@ -29,6 +29,7 @@ import com.fontlens.databinding.FragmentFontListBinding
 import com.fontlens.ui.DeleteFontDialog
 import com.fontlens.ui.LoadingDialog
 import android.view.ContextThemeWrapper
+import com.fontlens.utils.FolderScanner
 import com.fontlens.utils.FontLoader
 import com.fontlens.utils.ThemeManager
 import com.fontlens.utils.StorageDeleteHelper
@@ -59,6 +60,17 @@ class FontListFragment : Fragment() {
                 uri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             )
+            // ── Deduplication: remove any existing folders that are parents or children of new one
+            val existing  = FontRepository.getSavedFolderUris()
+            val conflicts = FolderScanner.findConflicts(uri, existing)
+            conflicts.forEach { conflictUri ->
+                // Remove its fonts from library too
+                FontRepository.removeSavedFolder(conflictUri, requireContext())
+            }
+            if (conflicts.isNotEmpty()) {
+                Toast.makeText(requireContext(),
+                    "Replaced ${conflicts.size} overlapping folder(s)", Toast.LENGTH_SHORT).show()
+            }
             FontRepository.saveFolderUri(uri, requireContext())
             (activity as? MainActivity)?.refreshDrawer()
             loadFontsFromFolder(uri, showToast = true)
@@ -349,35 +361,8 @@ class FontListFragment : Fragment() {
         }
     }
 
-    private fun collectFontUris(folderUri: Uri, recursive: Boolean): List<Uri> {
-        val cr = requireContext().contentResolver
-        val fontExts = setOf("ttf", "otf", "woff", "woff2", "ttc")
-        val result = mutableListOf<Uri>()
-        fun scan(treeUri: Uri, docId: String) {
-            val childUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, docId)
-            cr.query(childUri, arrayOf(
-                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                DocumentsContract.Document.COLUMN_MIME_TYPE
-            ), null, null, null)?.use { cursor ->
-                val idCol   = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-                val nameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-                val mimeCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
-                while (cursor.moveToNext()) {
-                    val childId = cursor.getString(idCol)   ?: continue
-                    val name    = cursor.getString(nameCol) ?: continue
-                    val mime    = cursor.getString(mimeCol) ?: ""
-                    val ext     = name.substringAfterLast(".").lowercase()
-                    when {
-                        ext in fontExts -> result.add(DocumentsContract.buildDocumentUriUsingTree(treeUri, childId))
-                        recursive && mime == DocumentsContract.Document.MIME_TYPE_DIR -> scan(treeUri, childId)
-                    }
-                }
-            }
-        }
-        scan(folderUri, DocumentsContract.getTreeDocumentId(folderUri))
-        return result
-    }
+    private fun collectFontUris(folderUri: Uri, recursive: Boolean): List<Uri> =
+        FolderScanner.collectFontUris(requireContext(), folderUri, recursive)
 
     fun refresh(query: String = binding.etSearch.text?.toString() ?: "") {
         val all = FontRepository.getAll()

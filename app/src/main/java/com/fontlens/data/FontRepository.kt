@@ -198,7 +198,7 @@ object FontRepository {
         }
     }
 
-    private fun save(context: Context) {
+    fun save(context: Context) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_SETTINGS,  gson.toJson(settings))
             .putString(KEY_FAVORITES, gson.toJson(favorites))

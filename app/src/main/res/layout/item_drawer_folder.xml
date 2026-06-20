@@ -3,56 +3,88 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:background="@drawable/bg_drawer_item"
-    android:padding="10dp"
+    android:orientation="vertical"
     android:layout_marginBottom="4dp">
 
-    <!-- Folder icon -->
-    <TextView
-        android:layout_width="28dp"
+    <!-- Main folder row -->
+    <LinearLayout
+        android:id="@+id/row_folder"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="📁"
-        android:textSize="16sp"
-        android:gravity="center" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_drawer_item"
+        android:padding="10dp">
 
-    <!-- Folder path -->
-    <TextView
-        android:id="@+id/tv_folder_path"
-        android:layout_width="0dp"
+        <!-- Folder icon -->
+        <TextView
+            android:layout_width="28dp"
+            android:layout_height="wrap_content"
+            android:text="📁"
+            android:textSize="16sp"
+            android:gravity="center" />
+
+        <!-- Folder path -->
+        <TextView
+            android:id="@+id/tv_folder_path"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:textColor="?attr/textSecondary"
+            android:textSize="12sp"
+            android:maxLines="2"
+            android:ellipsize="middle" />
+
+        <!-- Expand sub-folders arrow — hidden until we know there are sub-folders -->
+        <TextView
+            android:id="@+id/btn_expand"
+            android:layout_width="32dp"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:text="⌄"
+            android:textSize="16sp"
+            android:textColor="?attr/textMuted"
+            android:visibility="gone"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <!-- Reload button -->
+        <TextView
+            android:id="@+id/btn_reload"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:text="↺"
+            android:textSize="18sp"
+            android:textColor="?attr/accentColor"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <!-- Remove folder button -->
+        <TextView
+            android:id="@+id/btn_remove_folder"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:text="✕"
+            android:textSize="14sp"
+            android:textColor="?attr/textMuted"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+    </LinearLayout>
+
+    <!-- Sub-folder container — expanded/collapsed by btn_expand -->
+    <LinearLayout
+        android:id="@+id/container_subfolders"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:layout_marginStart="8dp"
-        android:textColor="?attr/textSecondary"
-        android:textSize="12sp"
-        android:maxLines="2"
-        android:ellipsize="middle" />
-
-    <!-- Reload button -->
-    <TextView
-        android:id="@+id/btn_reload"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:gravity="center"
-        android:text="↺"
-        android:textSize="18sp"
-        android:textColor="?attr/accentColor"
-        android:clickable="true"
-        android:focusable="true"
-        android:background="?attr/selectableItemBackgroundBorderless" />
-
-    <!-- Remove folder button -->
-    <TextView
-        android:id="@+id/btn_remove_folder"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:gravity="center"
-        android:text="✕"
-        android:textSize="14sp"
-        android:textColor="?attr/textMuted"
-        android:clickable="true"
-        android:focusable="true"
-        android:background="?attr/selectableItemBackgroundBorderless" />
+        android:orientation="vertical"
+        android:paddingStart="36dp"
+        android:visibility="gone" />
 
 </LinearLayout>
