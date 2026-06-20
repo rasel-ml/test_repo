@@ -35,7 +35,7 @@
                 android:textColor="?attr/textPrimary"
                 android:textSize="15sp"
                 android:maxLines="1"
-                android:ellipsize="end" />
+                android:ellipsize="marquee" />
 
             <!-- Font type badge — wrap_content, sits before the name -->
             <TextView
