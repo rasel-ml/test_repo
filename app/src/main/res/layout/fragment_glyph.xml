@@ -107,38 +107,39 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/toolbar">
 
-        <!-- Three-column nav row -->
+        <!-- Script nav row: [prev]  [name + stats]  [next]
+             Prev/next are wrap_content with small margin so they sit
+             close to the center name, not pushed to screen edges. -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingTop="8dp"
-            android:paddingBottom="2dp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp">
+            android:paddingBottom="2dp">
 
-            <!-- Previous script name — dim, right-aligned, tappable -->
+            <!-- Previous script name — dim, tappable, close to center -->
             <TextView
                 android:id="@+id/tv_script_prev"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="start"
-                android:maxLines="2"
+                android:gravity="end"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:textSize="11sp"
                 android:textColor="?attr/textMuted"
                 android:alpha="0.55"
-                android:paddingEnd="6dp"
+                android:paddingEnd="10dp"
+                android:maxWidth="90dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackgroundBorderless" />
 
-            <!-- Current script name — centered, bold -->
+            <!-- Current script name + stats, centered -->
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="2"
                 android:orientation="vertical"
                 android:gravity="center">
 
@@ -164,18 +165,19 @@
 
             </LinearLayout>
 
-            <!-- Next script name — dim, left-aligned, tappable -->
+            <!-- Next script name — dim, tappable, close to center -->
             <TextView
                 android:id="@+id/tv_script_next"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:maxLines="2"
+                android:gravity="start"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:textSize="11sp"
                 android:textColor="?attr/textMuted"
                 android:alpha="0.55"
-                android:paddingStart="6dp"
+                android:paddingStart="10dp"
+                android:maxWidth="90dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackgroundBorderless" />

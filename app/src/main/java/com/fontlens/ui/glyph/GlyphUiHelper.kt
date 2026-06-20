@@ -5,7 +5,6 @@ import android.graphics.drawable.GradientDrawable
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.TextView
-import android.view.animation.AnimationUtils
 import androidx.recyclerview.widget.GridLayoutManager
 import com.fontlens.data.FontItem
 import com.fontlens.data.FontRepository
@@ -177,23 +176,27 @@ class GlyphUiHelper(
         binding.btnPrev.alpha = if (safeIdx > 0) 1f else 0.3f
         binding.btnNext.alpha = if (safeIdx < pages.size - 1) 1f else 0.3f
 
-        // Slide animation on the glyph grid
+        // Smooth slide via ViewPropertyAnimator (hardware-accelerated, cancellable)
         if (lastNavDir != 0) {
-            val slideIn = if (lastNavDir > 0)
-                android.view.animation.TranslateAnimation(
-                    binding.rvGlyphs.width.toFloat(), 0f, 0f, 0f)
-            else
-                android.view.animation.TranslateAnimation(
-                    -binding.rvGlyphs.width.toFloat(), 0f, 0f, 0f)
-            slideIn.duration = 220
-            slideIn.interpolator = android.view.animation.DecelerateInterpolator()
-            binding.rvGlyphs.startAnimation(slideIn)
+            val rv       = binding.rvGlyphs
+            val fromX    = if (lastNavDir > 0) rv.width.toFloat() else -rv.width.toFloat()
 
-            // Also animate the current script name
-            val nameFade = android.view.animation.AlphaAnimation(0f, 1f)
-            nameFade.duration = 200
-            binding.tvScriptName.startAnimation(nameFade)
-            binding.tvScriptStats.startAnimation(nameFade)
+            // Cancel any in-progress animation, snap to final position first
+            rv.animate().cancel()
+            rv.translationX = fromX
+            rv.alpha = 0.6f
+            rv.animate()
+                .translationX(0f)
+                .alpha(1f)
+                .setDuration(200)
+                .setInterpolator(android.view.animation.DecelerateInterpolator(1.5f))
+                .start()
+
+            // Fade in the script name text
+            binding.tvScriptName.alpha = 0f
+            binding.tvScriptStats.alpha = 0f
+            binding.tvScriptName.animate().alpha(1f).setDuration(180).start()
+            binding.tvScriptStats.animate().alpha(1f).setDuration(180).start()
         }
 
         val tf = TypefaceLoader.getTypeface(font.id)
