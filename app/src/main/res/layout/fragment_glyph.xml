@@ -94,38 +94,100 @@
     </androidx.appcompat.widget.Toolbar>
 
     <!-- ══ SCRIPT HEADER BAR ═══════════════════════════════════════════════
-         Script name centered + glyph count centered below
+         [← prev script (dim)] | [current script + count] | [next script (dim) →]
+         Tapping prev/next slides to that script.
     ════════════════════════════════════════════════════════════════════════ -->
     <LinearLayout
         android:id="@+id/script_header"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:gravity="center"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
         android:background="?attr/bgSidebar"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/toolbar">
 
-        <TextView
-            android:id="@+id/tv_script_name"
-            android:layout_width="wrap_content"
+        <!-- Three-column nav row -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:textColor="?attr/textPrimary"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="2dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
 
-        <TextView
-            android:id="@+id/tv_script_stats"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:gravity="center"
-            android:textColor="?attr/textMuted"
-            android:textSize="11sp" />
+            <!-- Previous script name — dim, right-aligned, tappable -->
+            <TextView
+                android:id="@+id/tv_script_prev"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="start"
+                android:maxLines="2"
+                android:textSize="11sp"
+                android:textColor="?attr/textMuted"
+                android:alpha="0.55"
+                android:paddingEnd="6dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless" />
+
+            <!-- Current script name — centered, bold -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/tv_script_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textColor="?attr/textPrimary"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/tv_script_stats"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:gravity="center"
+                    android:textColor="?attr/textMuted"
+                    android:textSize="10sp" />
+
+            </LinearLayout>
+
+            <!-- Next script name — dim, left-aligned, tappable -->
+            <TextView
+                android:id="@+id/tv_script_next"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:maxLines="2"
+                android:textSize="11sp"
+                android:textColor="?attr/textMuted"
+                android:alpha="0.55"
+                android:paddingStart="6dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless" />
+
+        </LinearLayout>
+
+        <!-- Thin divider at bottom -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="6dp"
+            android:background="?attr/dividerColor" />
 
     </LinearLayout>
 

@@ -5,6 +5,7 @@ import android.graphics.drawable.GradientDrawable
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.TextView
+import android.view.animation.AnimationUtils
 import androidx.recyclerview.widget.GridLayoutManager
 import com.fontlens.data.FontItem
 import com.fontlens.data.FontRepository
@@ -26,6 +27,7 @@ class GlyphUiHelper(
     private var currentPageIdx = 0
     private var searchQuery    = ""
     private var searchMode     = "char"   // "char" | "unicode"
+    private var lastNavDir     = 0         // +1 forward, -1 backward, 0 initial
 
     private lateinit var adapter: GlyphAdapter
 
@@ -91,10 +93,10 @@ class GlyphUiHelper(
 
         // ── Pagination ────────────────────────────────────────────────────
         binding.btnPrev.setOnClickListener {
-            if (currentPageIdx > 0) { currentPageIdx--; renderPage() }
+            if (currentPageIdx > 0) { lastNavDir = -1; currentPageIdx--; renderPage() }
         }
         binding.btnNext.setOnClickListener {
-            if (currentPageIdx < activePages().size - 1) { currentPageIdx++; renderPage() }
+            if (currentPageIdx < activePages().size - 1) { lastNavDir = +1; currentPageIdx++; renderPage() }
         }
 
         searchPages = allPages
@@ -139,6 +141,8 @@ class GlyphUiHelper(
             binding.tvPage.text        = "0 / 0"
             binding.btnPrev.alpha      = 0.3f
             binding.btnNext.alpha      = 0.3f
+            binding.tvScriptPrev.text  = ""
+            binding.tvScriptNext.text  = ""
             adapter.update(emptyList(), emptySet(), false, null)
             return
         }
@@ -147,12 +151,50 @@ class GlyphUiHelper(
         val page    = pages[safeIdx]
         val showAll = FontRepository.settings.glyphShowAll
 
+        // Current script name + stats
         binding.tvScriptName.text  = page.block.name
         val totalInBlock           = page.block.range.count()
         binding.tvScriptStats.text = "${page.presentSet.size} / $totalInBlock"
         binding.tvPage.text        = "${safeIdx + 1} / ${pages.size}"
-        binding.btnPrev.alpha      = if (safeIdx > 0) 1f else 0.3f
-        binding.btnNext.alpha      = if (safeIdx < pages.size - 1) 1f else 0.3f
+
+        // Previous script label
+        val prevPage = if (safeIdx > 0) pages[safeIdx - 1] else null
+        binding.tvScriptPrev.text    = prevPage?.block?.name ?: ""
+        binding.tvScriptPrev.alpha   = if (prevPage != null) 0.55f else 0f
+        binding.tvScriptPrev.setOnClickListener {
+            if (prevPage != null) { lastNavDir = -1; currentPageIdx--; renderPage() }
+        }
+
+        // Next script label
+        val nextPage = if (safeIdx < pages.size - 1) pages[safeIdx + 1] else null
+        binding.tvScriptNext.text    = nextPage?.block?.name ?: ""
+        binding.tvScriptNext.alpha   = if (nextPage != null) 0.55f else 0f
+        binding.tvScriptNext.setOnClickListener {
+            if (nextPage != null) { lastNavDir = +1; currentPageIdx++; renderPage() }
+        }
+
+        // Pagination bar buttons
+        binding.btnPrev.alpha = if (safeIdx > 0) 1f else 0.3f
+        binding.btnNext.alpha = if (safeIdx < pages.size - 1) 1f else 0.3f
+
+        // Slide animation on the glyph grid
+        if (lastNavDir != 0) {
+            val slideIn = if (lastNavDir > 0)
+                android.view.animation.TranslateAnimation(
+                    binding.rvGlyphs.width.toFloat(), 0f, 0f, 0f)
+            else
+                android.view.animation.TranslateAnimation(
+                    -binding.rvGlyphs.width.toFloat(), 0f, 0f, 0f)
+            slideIn.duration = 220
+            slideIn.interpolator = android.view.animation.DecelerateInterpolator()
+            binding.rvGlyphs.startAnimation(slideIn)
+
+            // Also animate the current script name
+            val nameFade = android.view.animation.AlphaAnimation(0f, 1f)
+            nameFade.duration = 200
+            binding.tvScriptName.startAnimation(nameFade)
+            binding.tvScriptStats.startAnimation(nameFade)
+        }
 
         val tf = TypefaceLoader.getTypeface(font.id)
         adapter.update(page.codepoints, page.presentSet, showAll, tf)
