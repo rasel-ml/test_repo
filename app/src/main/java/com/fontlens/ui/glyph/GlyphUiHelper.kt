@@ -41,7 +41,11 @@ class GlyphUiHelper(
         // ── Build pages sorted by available glyph count descending ────────
         val supportedSet = font.meta.supportedChars.toSet()
         allPages = GlyphScriptDefs.buildPages(supportedSet, showAll)
-            .sortedByDescending { it.presentSet.size }
+            .sortedByDescending { page ->
+                val totalInBlock = page.block.range.count()
+                if (totalInBlock == 0) 0.0
+                else page.presentSet.size.toDouble() / totalInBlock
+            }
 
         // ── Total glyph count badge ────────────────────────────────────────
         binding.tvGlyphCount.text = font.meta.supportedChars.size.toString()
@@ -74,7 +78,15 @@ class GlyphUiHelper(
 
         // ── Adapter + grid ────────────────────────────────────────────────
         adapter = GlyphAdapter(tf, supportedSet, showAll)
-        binding.rvGlyphs.layoutManager = GridLayoutManager(ctx, 6)
+        // Auto column count: target cell size ~68dp, 4dp gap each side = 76dp per slot
+        val dm          = ctx.resources.displayMetrics
+        val screenWidthDp = dm.widthPixels / dm.density
+        val cellSlotDp  = 76f   // cell width (68dp) + margins (4dp each side)
+        val columns     = (screenWidthDp / cellSlotDp).toInt().coerceAtLeast(3)
+        binding.rvGlyphs.layoutManager = GridLayoutManager(ctx, columns)
+        // 4dp spacing on every side of every cell → 8dp gap between cells, 4dp at edges
+        val spacingPx = (4f * dm.density).toInt()
+        binding.rvGlyphs.addItemDecoration(GridSpacingDecoration(spacingPx))
         binding.rvGlyphs.adapter = adapter
 
         // ── Pagination ────────────────────────────────────────────────────
