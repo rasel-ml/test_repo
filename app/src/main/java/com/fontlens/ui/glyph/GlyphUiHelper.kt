@@ -97,11 +97,20 @@ class GlyphUiHelper(
         searchPages = allPages.mapNotNull { page ->
             val matched = page.codepoints.filter { cp ->
                 when (searchMode) {
-                    "unicode" -> cp.toString(16).contains(q, ignoreCase = true) ||
-                                 "U+${cp.toString(16).uppercase()}".contains(q, ignoreCase = true)
+                    "unicode" -> {
+                        // Match if the hex value contains the query string (case-insensitive)
+                        // e.g. query "A" matches U+0041, U+00A0, U+1A00 etc.
+                        val hex = cp.toString(16).uppercase()
+                        val qUp = q.uppercase()
+                        hex.contains(qUp) || "U+$hex".contains(qUp)
+                    }
                     else -> {
-                        val ch = try { String(Character.toChars(cp)) } catch (e: Exception) { "" }
-                        ch.contains(q) || cp.toString(16).contains(q, ignoreCase = true)
+                        // Exact character match — each input character is matched individually
+                        // e.g. query "A" shows only U+0041, query "a" shows only U+0061
+                        try {
+                            val ch = String(Character.toChars(cp))
+                            q.any { inputChar -> ch == inputChar.toString() }
+                        } catch (e: Exception) { false }
                     }
                 }
             }
@@ -140,11 +149,10 @@ class GlyphUiHelper(
     private fun styleToggleBtn(p: ThemeManager.Palette, dp: Float) {
         val isChar = searchMode == "char"
         binding.btnSearchToggle.text = if (isChar) "Aa" else "UN"
-        // Secondary accent: slightly desaturated version of accent used as bg
+        // Round button: cornerRadius = 50% makes it a pill/circle
         val bg = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = 6f * dp
-            // Use accent at 30% opacity as secondary accent bg
+            cornerRadius = 100f * dp   // fully round
             setColor(Color.argb(75,
                 Color.red(p.accent), Color.green(p.accent), Color.blue(p.accent)))
         }
