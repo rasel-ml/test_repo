@@ -121,82 +121,103 @@ class MainActivity : AppCompatActivity() {
         val inflater  = LayoutInflater.from(this)
         val recursive = FontRepository.settings.folderRecursive
 
-        folders.forEach { uri ->
-            // ── Parent folder row ────────────────────────────────────────────
-            addFolderRow(container, inflater, uri, indented = false)
+        if (folders.isEmpty()) return
 
-            // ── Sub-folder rows (recursive mode only) ────────────────────────
-            if (recursive) {
-                lifecycleScope.launch(Dispatchers.IO) {
-                    val subFolders = FolderScanner.collectSubFolders(this@MainActivity, uri)
-                    if (subFolders.isEmpty()) return@launch
-                    withContext(Dispatchers.Main) {
-                        if (isFinishing || isDestroyed) return@withContext
-                        subFolders.forEach { (name, subUri) ->
-                            addFolderRow(container, inflater, subUri,
-                                indented = true, displayName = name)
-                        }
-                    }
+        // Collect sub-folders on IO thread for ALL parent folders at once,
+        // then build the entire UI in one Main-thread pass — no late-appearing rows.
+        lifecycleScope.launch(Dispatchers.IO) {
+            // Map: parentUri → list of (subName, subUri)
+            val subFolderMap = if (recursive) {
+                folders.associateWith { uri ->
+                    FolderScanner.collectSubFolders(this@MainActivity, uri)
+                }
+            } else emptyMap()
+
+            withContext(Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                container.removeAllViews()   // clear again in case drawer reopened
+
+                folders.forEach { uri ->
+                    val subFolders = subFolderMap[uri] ?: emptyList()
+                    bindFolderRow(container, inflater, uri, subFolders)
                 }
             }
         }
     }
 
-    /**
-     * Inflate and add a single folder row (parent or sub-folder) to [container].
-     * [indented] = true adds left padding to visually show hierarchy.
-     * [displayName] overrides the auto-resolved name (used for sub-folders).
-     */
-    private fun addFolderRow(
+    private fun bindFolderRow(
         container: android.widget.LinearLayout,
         inflater: LayoutInflater,
         uri: android.net.Uri,
-        indented: Boolean,
-        displayName: String? = null
+        subFolders: List<Pair<String, android.net.Uri>>
     ) {
         val fb   = ItemDrawerFolderBinding.inflate(inflater, container, false)
-        val name = displayName ?: getFolderDisplayName(uri)
+        val name = getFolderDisplayName(uri)
         fb.tvFolderPath.text = name
 
-        // Visual indent for sub-folders
-        if (indented) {
-            fb.root.setPaddingRelative(
-                (32 * resources.displayMetrics.density).toInt(), 0, 0, 0)
-            fb.tvFolderPath.alpha = 0.8f
-        }
-
-        // Hide unused expand button and sub-folder container
-        fb.btnExpand.visibility          = android.view.View.GONE
-        fb.containerSubfolders.visibility = android.view.View.GONE
-
+        // ── Reload ──────────────────────────────────────────────────────────
         fb.btnReload.setOnClickListener {
             closeDrawer()
             FontRepository.unmarkFolderLoaded(uri)
             getLibraryFragment()?.reloadFolder(uri)
         }
 
+        // ── Remove parent folder (removes everything) ───────────────────────
         fb.btnRemoveFolder.setOnClickListener {
             android.app.AlertDialog.Builder(
                 ContextThemeWrapper(this, ThemeManager.currentThemeResId(this)))
                 .setTitle("Remove Folder")
-                .setMessage("Remove \"$name\" and its fonts from the library?")
+                .setMessage("Remove \"$name\" and all its fonts from the library?")
                 .setPositiveButton("Remove") { _, _ ->
-                    if (indented) {
-                        // Sub-folder: remove only its fonts by path
-                        val subPath = FolderScanner.uriToPath(uri)
-                        FontRepository.removeFontsByFolder(subPath, this)
-                        FontRepository.save(this)
-                        container.removeView(fb.root)
-                        getLibraryFragment()?.refresh()
-                    } else {
-                        // Parent folder: remove folder + all its fonts
-                        FontRepository.removeSavedFolder(uri, this)
-                        refreshDrawer()
-                        getLibraryFragment()?.refresh()
-                    }
+                    FontRepository.removeSavedFolder(uri, this)
+                    refreshDrawer()
+                    getLibraryFragment()?.refresh()
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
+        }
+
+        // ── Sub-folder expand/collapse ──────────────────────────────────────
+        if (subFolders.isNotEmpty()) {
+            fb.btnExpand.visibility = View.VISIBLE
+            var expanded = false
+
+            // Pre-build all sub-folder rows into the container (hidden until expanded)
+            subFolders.forEach { (subName, subUri) ->
+                val sb = com.fontlens.databinding.ItemDrawerSubfolderBinding
+                    .inflate(inflater, fb.containerSubfolders, false)
+                sb.tvSubfolderName.text = subName
+                sb.btnRemoveSubfolder.setOnClickListener {
+                    android.app.AlertDialog.Builder(
+                        ContextThemeWrapper(this, ThemeManager.currentThemeResId(this)))
+                        .setTitle("Remove Sub-folder")
+                        .setMessage("Remove \"$subName\" fonts from the library?")
+                        .setPositiveButton("Remove") { _, _ ->
+                            val subPath = FolderScanner.uriToPath(subUri)
+                            FontRepository.removeFontsByFolder(subPath, this)
+                            FontRepository.save(this)
+                            fb.containerSubfolders.removeView(sb.root)
+                            // Hide expand button if no sub-folders left
+                            if (fb.containerSubfolders.childCount == 0) {
+                                fb.containerSubfolders.visibility = View.GONE
+                                fb.btnExpand.visibility = View.GONE
+                                expanded = false
+                            }
+                            getLibraryFragment()?.refresh()
+                        }
+                        .setNegativeButton("Cancel", null).show()
+                }
+                fb.containerSubfolders.addView(sb.root)
+            }
+
+            fb.btnExpand.setOnClickListener {
+                expanded = !expanded
+                fb.btnExpand.text = if (expanded) "⌃" else "⌄"
+                fb.containerSubfolders.visibility = if (expanded) View.VISIBLE else View.GONE
+            }
+        } else {
+            fb.btnExpand.visibility = View.GONE
+            fb.containerSubfolders.visibility = View.GONE
         }
 
         container.addView(fb.root)
