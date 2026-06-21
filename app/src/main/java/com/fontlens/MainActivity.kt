@@ -7,6 +7,8 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.view.LayoutInflater
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.view.View
 import android.widget.Toast
@@ -148,10 +150,10 @@ class MainActivity : AppCompatActivity() {
             // ── Sub-folders expand (only in recursive mode) ─────────────────
             if (recursive) {
                 // Detect sub-folders in background
-                lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                lifecycleScope.launch(Dispatchers.IO) {
                     val subFolders = FolderScanner.collectSubFolders(this@MainActivity, uri)
                     if (subFolders.isEmpty()) return@launch
-                    withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    withContext(Dispatchers.Main) {
                         if (isFinishing || isDestroyed) return@withContext
                         // Show expand arrow
                         fb.btnExpand.visibility = View.VISIBLE
