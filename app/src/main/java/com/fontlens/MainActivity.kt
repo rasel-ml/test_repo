@@ -6,10 +6,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.LayoutInflater
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import android.view.View
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -20,7 +16,6 @@ import com.fontlens.data.FontRepository
 import com.fontlens.databinding.ActivityMainBinding
 import com.fontlens.databinding.ItemDrawerFolderBinding
 import android.view.ContextThemeWrapper
-import com.fontlens.utils.FolderScanner
 import com.fontlens.utils.ThemeManager
 
 class MainActivity : AppCompatActivity() {
@@ -116,96 +111,30 @@ class MainActivity : AppCompatActivity() {
         val container = binding.folderListContainer
         val tvEmpty   = binding.tvDrawerEmpty
         container.removeAllViews()
-        val folders   = FontRepository.getSavedFolderUris()
+        val folders = FontRepository.getSavedFolderUris()
         tvEmpty.visibility = if (folders.isEmpty()) View.VISIBLE else View.GONE
-        if (folders.isEmpty()) return
-
-        val inflater  = LayoutInflater.from(this)
-        val recursive = FontRepository.settings.folderRecursive
-
-        // PHASE 1: Draw all parent folder rows immediately on Main thread.
-        val bindingMap = mutableMapOf<android.net.Uri, ItemDrawerFolderBinding>()
+        val inflater = LayoutInflater.from(this)
         folders.forEach { uri ->
             val fb = ItemDrawerFolderBinding.inflate(inflater, container, false)
-            fb.tvFolderPath.text              = getFolderDisplayName(uri)
-            fb.btnExpand.visibility           = View.GONE
-            fb.containerSubfolders.visibility = View.GONE
-            bindFolderRowButtons(fb, uri)
-            container.addView(fb.root)
-            bindingMap[uri] = fb
-        }
-
-        // PHASE 2: Scan sub-folders on IO; attach expand arrows when done.
-        if (!recursive) return
-        lifecycleScope.launch(Dispatchers.IO) {
-            val subFolderMap = folders.associateWith { uri ->
-                FolderScanner.collectSubFolders(this@MainActivity, uri)
+            fb.tvFolderPath.text = getFolderDisplayName(uri)
+            fb.btnReload.setOnClickListener {
+                closeDrawer()
+                FontRepository.unmarkFolderLoaded(uri)
+                getLibraryFragment()?.reloadFolder(uri)
             }
-            withContext(Dispatchers.Main) {
-                if (isFinishing || isDestroyed) return@withContext
-                bindingMap.forEach { (uri, fb) ->
-                    val subs = subFolderMap[uri] ?: return@forEach
-                    if (subs.isNotEmpty()) attachSubFolders(fb, inflater, subs)
-                }
-            }
-        }
-    }
-
-    private fun bindFolderRowButtons(fb: ItemDrawerFolderBinding, uri: android.net.Uri) {
-        val name = getFolderDisplayName(uri)
-        fb.btnReload.setOnClickListener {
-            closeDrawer()
-            FontRepository.unmarkFolderLoaded(uri)
-            getLibraryFragment()?.reloadFolder(uri)
-        }
-        fb.btnRemoveFolder.setOnClickListener {
-            android.app.AlertDialog.Builder(
-                ContextThemeWrapper(this, ThemeManager.currentThemeResId(this)))
-                .setTitle("Remove Folder")
-                .setMessage("Remove \"$name\" and all its fonts from the library?")
-                .setPositiveButton("Remove") { _, _ ->
-                    FontRepository.removeSavedFolder(uri, this)
-                    refreshDrawer()
-                    getLibraryFragment()?.refresh()
-                }
-                .setNegativeButton("Cancel", null).show()
-        }
-    }
-
-    private fun attachSubFolders(
-        fb: ItemDrawerFolderBinding,
-        inflater: LayoutInflater,
-        subFolders: List<Pair<String, android.net.Uri>>
-    ) {
-        fb.btnExpand.visibility = View.VISIBLE
-        var expanded = false
-        subFolders.forEach { (subName, subUri) ->
-            val sb = com.fontlens.databinding.ItemDrawerSubfolderBinding
-                .inflate(inflater, fb.containerSubfolders, false)
-            sb.tvSubfolderName.text = subName
-            sb.btnRemoveSubfolder.setOnClickListener {
-                android.app.AlertDialog.Builder(
-                    ContextThemeWrapper(this, ThemeManager.currentThemeResId(this)))
-                    .setTitle("Remove Sub-folder")
-                    .setMessage("Remove \"$subName\" fonts from the library?")
+            fb.btnRemoveFolder.setOnClickListener {
+                android.app.AlertDialog.Builder(ContextThemeWrapper(this, ThemeManager.currentThemeResId(this)))
+                    .setTitle("Remove Folder")
+                    .setMessage("Remove \"${getFolderDisplayName(uri)}\" and all its fonts from library?")
                     .setPositiveButton("Remove") { _, _ ->
-                        FontRepository.removeFontsByFolder(FolderScanner.uriToPath(subUri), this)
-                        FontRepository.save(this)
-                        fb.containerSubfolders.removeView(sb.root)
-                        if (fb.containerSubfolders.childCount == 0) {
-                            fb.containerSubfolders.visibility = View.GONE
-                            fb.btnExpand.visibility = View.GONE
-                        }
+                        FontRepository.removeSavedFolder(uri, this)
+                        refreshDrawer()
                         getLibraryFragment()?.refresh()
                     }
-                    .setNegativeButton("Cancel", null).show()
+                    .setNegativeButton("Cancel", null)
+                    .show()
             }
-            fb.containerSubfolders.addView(sb.root)
-        }
-        fb.btnExpand.setOnClickListener {
-            expanded = !expanded
-            fb.btnExpand.text = if (expanded) "⌃" else "⌄"
-            fb.containerSubfolders.visibility = if (expanded) View.VISIBLE else View.GONE
+            container.addView(fb.root)
         }
     }
 

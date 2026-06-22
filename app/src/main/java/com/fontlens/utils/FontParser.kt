@@ -104,7 +104,9 @@ object FontParser {
         }
 
         val supportedChars = parseCmap(buf, raw, tableMap)
-        val scriptCodes = ScriptCoverageAnalyzer.analyze(supportedChars, langCoverageThreshold)
+        val analysisResult = ScriptCoverageAnalyzer.analyzeWithAscii(supportedChars, langCoverageThreshold)
+        val scriptCodes    = analysisResult.scriptCodes
+        val isAsciiLegacy  = analysisResult.isAsciiLegacy
 
         val weightName = mapOf(
             100 to "Thin", 200 to "ExtraLight", 300 to "Light", 400 to "Regular",
@@ -122,7 +124,7 @@ object FontParser {
             condensedSupport = condensedSupport, extendedSupport = extendedSupport,
             isBold = isBold, isItalic = isItalic, isRegular = isRegular,
             tables = tableMap.keys.toList(), supportedChars = supportedChars,
-            scriptCodes = scriptCodes
+            scriptCodes = scriptCodes, isAsciiLegacy = isAsciiLegacy
         )
     }
 
