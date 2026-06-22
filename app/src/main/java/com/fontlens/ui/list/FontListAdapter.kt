@@ -409,6 +409,8 @@ class FontListAdapter(
             container.addView(tv)
         }
     }
+
+    private fun styleLabel(tv: TextView, isActive: Boolean, hasSample: Boolean, p: ThemeManager.Palette) {
         when {
             isActive && hasSample -> {
                 tv.setTextColor(p.accent)
