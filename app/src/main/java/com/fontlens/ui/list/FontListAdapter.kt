@@ -18,6 +18,7 @@ import com.fontlens.R
 import com.fontlens.data.FontItem
 import com.fontlens.data.FontListItem
 import com.fontlens.data.FontRepository
+import com.fontlens.data.LanguageDef
 import com.fontlens.data.scriptDisplayName
 import com.fontlens.databinding.ItemFontCardBinding
 import com.fontlens.databinding.ItemFolderHeaderBinding
@@ -26,7 +27,6 @@ import com.fontlens.utils.TypefaceLoader
 
 class FontListAdapter(
     private val onFontClick: (FontItem) -> Unit,
-    private val onSampleClick: (FontItem, String) -> Unit,
     private val onFavoriteClick: (FontItem) -> Unit,
     private val onRemoveClick: (FontItem) -> Unit,
     private val isFavorite: (String) -> Boolean,
@@ -40,6 +40,9 @@ class FontListAdapter(
 
     /** Active script index per font id. -1 means "Default" (embedded) is active. */
     private val activeScriptIndex = mutableMapOf<String, Int>()
+
+    /** Active language ISO code per font id. null = no language selected (script level). */
+    private val activeLangIso = mutableMapOf<String, String?>()
 
     fun exitSelectionMode() {
         selectionMode = false; selected.clear()
@@ -186,6 +189,14 @@ class FontListAdapter(
 
         buildLabelRow(ctx, b, font, orderedCodes, showDefault, safeIdx, p)
 
+        // Show language row if a script (not Default) is already active
+        val activeScriptCode = if (safeIdx in orderedCodes.indices) orderedCodes[safeIdx] else null
+        if (activeScriptCode != null) {
+            buildLangRow(ctx, b, font, activeScriptCode, p)
+        } else {
+            b.hsvLangChips.visibility = View.GONE
+        }
+
         // ── Typeface + preview ────────────────────────────────────────────
         val tf = TypefaceLoader.getTypeface(font.id) ?: Typeface.DEFAULT
         b.root.alpha = if (TypefaceLoader.isLoaded(font.id)) 1f else 0.6f
@@ -217,21 +228,13 @@ class FontListAdapter(
             if (selectionMode) {
                 if (selected.contains(font.id)) selected.remove(font.id) else selected.add(font.id)
                 onSelectionChanged(selected.toSet()); notifyItemChanged(holder.adapterPosition)
-            }
-            // Non-selection tap on card body does nothing — tap sample text to preview
+            } else onFontClick(font)
         }
         b.root.setOnLongClickListener {
             if (!selectionMode) {
                 selectionMode = true; selected.add(font.id)
                 onSelectionChanged(selected.toSet()); notifyDataSetChanged()
             }; true
-        }
-
-        // ── Sample text click → open preview with current sample ──────────
-        b.tvPreviewLarge.isClickable = true
-        b.tvPreviewLarge.isFocusable = true
-        b.tvPreviewLarge.setOnClickListener {
-            if (!selectionMode) onSampleClick(font, b.tvPreviewLarge.text.toString())
         }
     }
 
@@ -255,22 +258,6 @@ class FontListAdapter(
         container.removeAllViews()
 
         val totalLabels = (if (showDefault) 1 else 0) + codes.size
-        if (font.effectiveMeta.isAnsiLegacy) {
-            // ANSI legacy: show a single non-interactive "ANSI" badge
-            b.hsvScriptChips.visibility = View.VISIBLE
-            container.removeAllViews()
-            val dp = ctx.resources.displayMetrics.density
-            val tv = TextView(ctx)
-            tv.text     = "ANSI"
-            tv.textSize = 12.5f
-            tv.setTextColor(p.accent)
-            tv.setTypeface(tv.typeface, Typeface.BOLD)
-            tv.setPadding((4f * dp).toInt(), (2f * dp).toInt(), (4f * dp).toInt(), (2f * dp).toInt())
-            tv.layoutParams = ViewGroup.MarginLayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            container.addView(tv)
-            return
-        }
         if (totalLabels == 0) {
             b.hsvScriptChips.visibility = View.GONE
             return
@@ -303,11 +290,20 @@ class FontListAdapter(
                 val cur = activeScriptIndex[font.id]
                 if (cur == labelIdx) return@setOnClickListener   // already active
                 activeScriptIndex[font.id] = labelIdx
+                // Reset language selection when script changes
+                activeLangIso[font.id] = null
                 val tf = TypefaceLoader.getTypeface(font.id) ?: Typeface.DEFAULT
                 val newShowDefault = FontRepository.settings.preferMetaSample &&
                         font.effectiveMeta.sampleText.isNotEmpty()
                 applyPreview(b, font, codes, newShowDefault, labelIdx, tf)
                 refreshLabelStates(b, codes, newShowDefault, labelIdx, p)
+                // Show / hide language row for the newly active script
+                val scriptCode = if (labelIdx in codes.indices) codes[labelIdx] else null
+                if (scriptCode != null) {
+                    buildLangRow(ctx, b, font, scriptCode, p)
+                } else {
+                    b.hsvLangChips.visibility = View.GONE
+                }
             }
             return tv
         }
@@ -341,7 +337,78 @@ class FontListAdapter(
         }
     }
 
-    private fun styleLabel(tv: TextView, isActive: Boolean, hasSample: Boolean, p: ThemeManager.Palette) {
+    // ─────────────────────────────────────────────────────────────────────
+    // Language row  —  "English · Spanish · French …"
+    // Shown below script row when a script chip is tapped.
+    // Only languages the font actually supports (all required glyphs present).
+    // Hidden if fewer than 2 languages pass.
+    // ─────────────────────────────────────────────────────────────────────
+
+    private fun buildLangRow(
+        ctx: Context,
+        b: ItemFontCardBinding,
+        font: FontItem,
+        scriptCode: String,
+        p: ThemeManager.Palette
+    ) {
+        val langs = FontRepository.getSupportedLanguages(font, scriptCode)
+        if (langs.isEmpty()) {
+            b.hsvLangChips.visibility = View.GONE
+            return
+        }
+
+        b.hsvLangChips.visibility = View.VISIBLE
+        val container = b.llLangChips
+        container.removeAllViews()
+        val dp = ctx.resources.displayMetrics.density
+        val currentIso = activeLangIso[font.id]
+
+        fun makeSep(): TextView {
+            val sep = TextView(ctx)
+            sep.text      = " · "
+            sep.textSize  = 11f
+            sep.setTextColor(Color.argb(60,
+                Color.red(p.textMuted), Color.green(p.textMuted), Color.blue(p.textMuted)))
+            sep.layoutParams = ViewGroup.MarginLayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            return sep
+        }
+
+        langs.forEachIndexed { i, lang ->
+            if (i > 0) container.addView(makeSep())
+            val isActive = lang.isoCode == currentIso
+            val tv = TextView(ctx)
+            tv.text     = lang.name
+            tv.textSize = 11.5f
+            tv.setPadding((3f * dp).toInt(), (1f * dp).toInt(),
+                          (3f * dp).toInt(), (1f * dp).toInt())
+            tv.layoutParams = ViewGroup.MarginLayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+            // Style: active = accent, inactive = textMuted dimmed
+            if (isActive) {
+                tv.setTextColor(p.accent)
+                tv.setTypeface(tv.typeface, Typeface.BOLD)
+                tv.alpha = 1f
+            } else {
+                tv.setTextColor(p.textMuted)
+                tv.setTypeface(Typeface.DEFAULT, Typeface.NORMAL)
+                tv.alpha = 0.75f
+            }
+
+            tv.setOnClickListener {
+                activeLangIso[font.id] = lang.isoCode
+                // Update preview with this language's sample text
+                val sample = FontRepository.getSampleForIso(lang.isoCode) ?: lang.name
+                val tf = TypefaceLoader.getTypeface(font.id) ?: Typeface.DEFAULT
+                b.tvPreviewLarge.text     = sample.replace("\n", "  ").replace("\r", "")
+                b.tvPreviewLarge.typeface = tf
+                // Refresh language row to update active state
+                buildLangRow(ctx, b, font, scriptCode, p)
+            }
+            container.addView(tv)
+        }
+    }
         when {
             isActive && hasSample -> {
                 tv.setTextColor(p.accent)
@@ -445,12 +512,17 @@ class FontListAdapter(
         activeIdx: Int,   // -1 = Default
         tf: Typeface
     ) {
-        val m = font.effectiveMeta
+        // If a language is selected, it overrides everything
+        val isoOverride = activeLangIso[font.id]
+        if (isoOverride != null) {
+            val sample = FontRepository.getSampleForIso(isoOverride) ?: getSample(font)
+            b.tvPreviewLarge.text     = sample.replace("\n", "  ").replace("\r", "")
+            b.tvPreviewLarge.typeface = tf
+            return
+        }
         val text = when {
-            // ANSI legacy: embedded sample text highest priority always, else "ANSI" label
-            m.isAnsiLegacy && m.sampleText.isNotEmpty() -> m.sampleText
-            m.isAnsiLegacy -> FontRepository.getSampleForLang("ansi") ?: "ANSI"
-            activeIdx == -1 && showDefault -> m.sampleText
+            activeIdx == -1 && showDefault ->
+                font.effectiveMeta.sampleText
             codes.isNotEmpty() && activeIdx in codes.indices -> {
                 val code = codes[activeIdx]
                 FontRepository.getSampleForLang(code) ?: getSample(font)

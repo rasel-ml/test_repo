@@ -9,7 +9,9 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.fontlens.data.ALL_LANGUAGES
 import com.fontlens.data.FontRepository
+import com.fontlens.data.defaultLanguageSamples
 import com.fontlens.data.defaultLangSamples
 import com.fontlens.data.scriptDisplayName
 import com.fontlens.databinding.FragmentSampleManagerBinding
@@ -30,12 +32,22 @@ class SampleManagerFragment : Fragment() {
         binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
 
         val adapter = ScriptSampleAdapter(buildItems()) { updatedItems ->
-            // Persist: update both langSamples texts and scriptOrder
-            val newSamples = updatedItems.associate { it.code to it.sampleText }
-            val newOrder   = updatedItems.map { it.code }
+            // Persist: split back into script samples and language ISO samples
+            val scriptDefaults = defaultLangSamples().keys.toSet()
+            val newScriptSamples = updatedItems
+                .filter { it.code in scriptDefaults }
+                .associate { it.code to it.sampleText }
+            val newScriptOrder = updatedItems
+                .filter { it.code in scriptDefaults }
+                .map { it.code }
+            val newLangSamples = updatedItems
+                .filter { it.code !in scriptDefaults }
+                .associate { it.code to it.sampleText }
+
             FontRepository.settings = FontRepository.settings.copy(
-                langSamples = newSamples,
-                scriptOrder = newOrder
+                langSamples      = newScriptSamples,
+                scriptOrder      = newScriptOrder,
+                langSamplesByIso = FontRepository.settings.langSamplesByIso + newLangSamples
             )
             FontRepository.saveSettings(requireContext())
         }
@@ -43,7 +55,6 @@ class SampleManagerFragment : Fragment() {
         binding.rvScripts.layoutManager = LinearLayoutManager(requireContext())
         binding.rvScripts.adapter = adapter
 
-        // Attach drag-to-reorder
         val touchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
         ) {
@@ -54,9 +65,8 @@ class SampleManagerFragment : Fragment() {
             override fun onSwiped(vh: RecyclerView.ViewHolder, dir: Int) {}
             override fun onSelectedChanged(vh: RecyclerView.ViewHolder?, actionState: Int) {
                 super.onSelectedChanged(vh, actionState)
-                // Elevate card while dragging
                 if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
-                    vh?.itemView?.alpha = 0.85f
+                    vh?.itemView?.alpha  = 0.85f
                     vh?.itemView?.scaleX = 1.02f
                     vh?.itemView?.scaleY = 1.02f
                 }
@@ -72,18 +82,48 @@ class SampleManagerFragment : Fragment() {
         adapter.touchHelper = touchHelper
     }
 
-    /** Build ordered list from current settings, ensuring all 29 scripts are present. */
+    /**
+     * Build the full item list:
+     *  1. Script-level entries (ordered by user's scriptOrder)
+     *  2. Language-level entries (grouped under their script, sorted by script then name)
+     *     Format used in the adapter: code = ISO code, displayLabel set separately
+     */
     private fun buildItems(): MutableList<ScriptItem> {
-        val s = FontRepository.settings
-        val defaults = defaultLangSamples()
-        // Start from user's saved order, then append any missing codes
-        val allCodes = (s.scriptOrder + defaults.keys).distinct()
-        return allCodes.map { code ->
+        val s        = FontRepository.settings
+        val scriptDefaults = defaultLangSamples()
+        val langDefaults   = defaultLanguageSamples()
+
+        // ── Script entries (draggable, reorderable) ────────────────────────
+        val allScriptCodes = (s.scriptOrder + scriptDefaults.keys).distinct()
+        val scriptItems = allScriptCodes.map { code ->
             ScriptItem(
-                code       = code,
-                sampleText = s.langSamples[code] ?: defaults[code] ?: ""
+                code         = code,
+                sampleText   = s.langSamples[code] ?: scriptDefaults[code] ?: "",
+                displayLabel = scriptDisplayName(code),
+                isoLabel     = null,               // not a language entry
+                isLanguage   = false
             )
-        }.toMutableList()
+        }
+
+        // ── Language entries (non-draggable, grouped) ──────────────────────
+        // One entry per unique language in ALL_LANGUAGES (dedup by isoCode)
+        val seen = mutableSetOf<String>()
+        val langItems = ALL_LANGUAGES
+            .filter { seen.add(it.isoCode) }      // deduplicate
+            .sortedWith(compareBy({ it.scriptCode }, { it.name }))
+            .map { lang ->
+                ScriptItem(
+                    code         = lang.isoCode,
+                    sampleText   = s.langSamplesByIso[lang.isoCode]
+                                       ?: langDefaults[lang.isoCode] ?: "",
+                    displayLabel = lang.name,
+                    isoLabel     = lang.isoCode.uppercase(),
+                    scriptLabel  = scriptDisplayName(lang.scriptCode),
+                    isLanguage   = true
+                )
+            }
+
+        return (scriptItems + langItems).toMutableList()
     }
 
     override fun onDestroyView() { super.onDestroyView(); _binding = null }
@@ -91,7 +131,14 @@ class SampleManagerFragment : Fragment() {
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
-data class ScriptItem(val code: String, var sampleText: String)
+data class ScriptItem(
+    val code: String,
+    var sampleText: String,
+    val displayLabel: String = code,
+    val isoLabel: String? = null,
+    val scriptLabel: String = "",
+    val isLanguage: Boolean = false
+)
 
 // ── Adapter ───────────────────────────────────────────────────────────────────
 
@@ -111,13 +158,27 @@ class ScriptSampleAdapter(
 
     override fun onBindViewHolder(holder: VH, position: Int) {
         val item = items[position]
-        val b = holder.b
+        val b    = holder.b
 
-        b.tvScriptName.text = scriptDisplayName(item.code)
-        b.tvScriptCode.text = item.code.uppercase()
+        if (item.isLanguage) {
+            // ── Language entry: "Language Name · Script Name  [ISO]" ──────
+            // Name label: "English · Latin"
+            b.tvScriptName.text = "${item.displayLabel} · ${item.scriptLabel}"
+            // ISO badge
+            b.tvScriptCode.text    = item.isoLabel ?: item.code.uppercase()
+            b.tvScriptCode.visibility = android.view.View.VISIBLE
+            // Drag handle hidden for language rows
+            b.ivDragHandle.visibility = android.view.View.INVISIBLE
+        } else {
+            // ── Script entry (original behaviour) ─────────────────────────
+            b.tvScriptName.text       = item.displayLabel
+            b.tvScriptCode.text       = item.code.uppercase()
+            b.tvScriptCode.visibility = android.view.View.VISIBLE
+            b.ivDragHandle.visibility = android.view.View.VISIBLE
+        }
+
         b.etSampleText.setText(item.sampleText)
 
-        // Save text on focus change
         b.etSampleText.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) {
                 val pos = holder.adapterPosition
@@ -128,10 +189,12 @@ class ScriptSampleAdapter(
             }
         }
 
-        // Restore default
         b.btnRestoreDefault.setOnClickListener {
-            val defaults = defaultLangSamples()
-            val default  = defaults[item.code] ?: ""
+            val default = if (item.isLanguage) {
+                defaultLanguageSamples()[item.code] ?: ""
+            } else {
+                defaultLangSamples()[item.code] ?: ""
+            }
             b.etSampleText.setText(default)
             val pos = holder.adapterPosition
             if (pos != RecyclerView.NO_ID.toInt()) {
@@ -140,14 +203,18 @@ class ScriptSampleAdapter(
             }
         }
 
-        // Start drag on handle touch
-        b.ivDragHandle.setOnTouchListener { _, _ ->
-            touchHelper?.startDrag(holder)
-            false
+        // Only script entries are draggable
+        if (!item.isLanguage) {
+            b.ivDragHandle.setOnTouchListener { _, _ ->
+                touchHelper?.startDrag(holder)
+                false
+            }
         }
     }
 
     fun moveItem(from: Int, to: Int) {
+        // Only allow dragging script-level items
+        if (items[from].isLanguage || items[to].isLanguage) return
         val item = items.removeAt(from)
         items.add(to, item)
         notifyItemMoved(from, to)

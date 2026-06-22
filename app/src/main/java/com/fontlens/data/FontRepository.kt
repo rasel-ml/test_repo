@@ -235,6 +235,20 @@ object FontRepository {
     fun getSampleForLang(langCode: String): String? =
         settings.langSamples[langCode]?.ifEmpty { null }
 
+    /** Returns sample text for a specific ISO language code, or null if none. */
+    fun getSampleForIso(isoCode: String): String? =
+        settings.langSamplesByIso[isoCode]?.ifEmpty { null }
+            ?: defaultLanguageSamples()[isoCode]
+
+    /**
+     * Returns languages that this font supports for a given script.
+     * Empty list means: 0 or 1 language passes → don't show language row.
+     */
+    fun getSupportedLanguages(font: FontItem, scriptCode: String): List<com.fontlens.data.LanguageDef> {
+        val charSet = font.effectiveMeta.supportedChars.toHashSet()
+        return com.fontlens.data.supportedLanguages(scriptCode, charSet)
+    }
+
     /**
      * Returns script codes to display on a font card, ordered by user's scriptOrder,
      * limited to scripts the font actually supports.

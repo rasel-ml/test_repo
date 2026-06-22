@@ -32,8 +32,7 @@ data class FontMeta(
     val isRegular: Boolean = true,
     val tables: List<String> = emptyList(),
     val supportedChars: List<Int> = emptyList(),
-    val scriptCodes: List<String> = emptyList(),
-    val isAnsiLegacy: Boolean = false
+    val scriptCodes: List<String> = emptyList()
 )
 
 data class FontItem(
@@ -64,10 +63,12 @@ data class FontItem(
 }
 
 data class AppSettings(
-    // langSamples: keyed by script code (e.g. "en", "hi"). Values are the sample texts.
+    // langSamples: keyed by script code (e.g. "latin", "cyrillic"). Values are the sample texts.
     val langSamples: Map<String, String> = defaultLangSamples(),
     // User-defined priority order of script codes. Drives chip order and preview priority.
     val scriptOrder: List<String> = defaultLangSamples().keys.toList(),
+    // langSamplesByIso: keyed by ISO language code (e.g. "en", "es"). Values are sample texts.
+    val langSamplesByIso: Map<String, String> = defaultLanguageSamples(),
     val samplePriority: SamplePriority = SamplePriority.METADATA_FIRST,
     val glyphShowAll: Boolean = false,
     // Legacy kept for Gson backward compat
@@ -86,7 +87,6 @@ data class AppSettings(
 
 /** Built-in sample texts for all 29 scripts in ScriptCoverageAnalyzer */
 fun defaultLangSamples(): Map<String, String> = linkedMapOf(
-    "ansi"        to "ANSI",
     "latin"       to "The quick brown fox jumps over the lazy dog",
     "devanagari"  to "सभी मनुष्यों को गौरव और अधिकारों के मामले में जन्मजात स्वतन्त्रता",
     "bengali"     to "আমার সোনার বাংলা আমি তোমায় ভালোবাসি",
@@ -118,7 +118,6 @@ fun defaultLangSamples(): Map<String, String> = linkedMapOf(
 
 /** Display name for each script code */
 fun scriptDisplayName(code: String): String = when (code) {
-    "ansi"       -> "ANSI"
     "latin"      -> "Latin"
     "devanagari" -> "Devanagari"
     "bengali"    -> "Bengali"
