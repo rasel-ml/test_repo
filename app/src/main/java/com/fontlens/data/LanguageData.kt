@@ -1,5 +1,7 @@
 package com.fontlens.data
 
+import com.fontlens.data.scriptDisplayName
+
 /**
  * A single language definition.
  *
@@ -326,16 +328,35 @@ fun languagesForScript(scriptCode: String): List<LanguageDef> =
     ALL_LANGUAGES.filter { it.scriptCode == scriptCode }
 
 /**
- * Returns languages supported by a font for a given script.
- * A language passes if font.supportedChars contains ALL of its requiredChars.
- * If 0 or 1 language passes → returns empty list (no row shown per spec).
+ * True when a script has exactly one language defined and the language name
+ * matches the script display name (e.g. Thai/Thai, Greek/Greek).
+ * Used to suppress "Language · Script" in favour of just "Language" in Settings.
  */
-fun supportedLanguages(scriptCode: String, supportedChars: Set<Int>): List<LanguageDef> {
+fun isSingleNameScript(scriptCode: String): Boolean {
+    val langs = languagesForScript(scriptCode)
+    if (langs.size != 1) return false
+    return langs[0].name.equals(scriptDisplayName(scriptCode), ignoreCase = true)
+}
+
+/**
+ * Returns languages supported by a font for a given script, in the user's
+ * preferred order (langOrder). Filters by required glyph coverage.
+ * Returns empty list if fewer than 2 languages pass (no language row shown).
+ */
+fun supportedLanguages(
+    scriptCode: String,
+    supportedChars: Set<Int>,
+    langOrder: List<String>
+): List<LanguageDef> {
     val candidates = languagesForScript(scriptCode)
-    val passing = candidates.filter { lang ->
+    val charsPassing = candidates.filter { lang ->
         lang.requiredChars.all { cp -> supportedChars.contains(cp) }
     }
-    return if (passing.size <= 1) emptyList() else passing
+    // Re-order by langOrder, then append any not in langOrder
+    val ordered = langOrder
+        .mapNotNull { iso -> charsPassing.find { it.isoCode == iso } } +
+        charsPassing.filter { it.isoCode !in langOrder }
+    return if (ordered.size <= 1) emptyList() else ordered
 }
 
 /** Default sample texts keyed by ISO code. */

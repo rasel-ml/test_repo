@@ -353,7 +353,7 @@ class FontListAdapter(
 
         codes.forEachIndexed { i, code ->
             val idx       = i                               // script index
-            val hasSample = FontRepository.getSampleForLang(code) != null
+            val hasSample = FontRepository.getDefaultSampleForScript(font, code) != null
             val name      = scriptDisplayName(code)
 
             if (showDefault || i > 0) container.addView(makeSep())
@@ -495,7 +495,7 @@ class FontListAdapter(
         }
         codes.forEachIndexed { idx, code ->
             nextLabel()?.let { tv ->
-                val hasSample = FontRepository.getSampleForLang(code) != null
+                val hasSample = FontRepository.getDefaultSampleForScript(font, code) != null
                 styleLabel(tv, idx == activeIdx, hasSample, p)
                 animateLabel(tv, idx == activeIdx)
             }
@@ -550,11 +550,11 @@ class FontListAdapter(
         val text = when {
             // ANSI legacy: embedded sample text highest priority always, else "ANSI" label
             m.isAnsiLegacy && m.sampleText.isNotEmpty() -> m.sampleText
-            m.isAnsiLegacy -> FontRepository.getSampleForLang("ansi") ?: "ANSI"
+            m.isAnsiLegacy -> "ANSI"
             activeIdx == -1 && showDefault -> m.sampleText
             codes.isNotEmpty() && activeIdx in codes.indices -> {
                 val code = codes[activeIdx]
-                FontRepository.getSampleForLang(code) ?: getSample(font)
+                FontRepository.getDefaultSampleForScript(font, code) ?: getSample(font)
             }
             else -> getSample(font)
         }
