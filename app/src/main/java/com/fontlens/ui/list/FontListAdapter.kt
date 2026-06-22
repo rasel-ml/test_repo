@@ -320,7 +320,7 @@ class FontListAdapter(
                 val newShowDefault = FontRepository.settings.preferMetaSample &&
                         font.effectiveMeta.sampleText.isNotEmpty()
                 applyPreview(b, font, codes, newShowDefault, labelIdx, tf)
-                refreshLabelStates(b, codes, newShowDefault, labelIdx, p)
+                refreshLabelStates(b, font, codes, newShowDefault, labelIdx, p)
                 // Show / hide language row for the newly active script
                 val scriptCode = if (labelIdx in codes.indices) codes[labelIdx] else null
                 if (scriptCode != null) {
@@ -468,6 +468,7 @@ class FontListAdapter(
 
     private fun refreshLabelStates(
         b: ItemFontCardBinding,
+        font: FontItem,
         codes: List<String>,
         showDefault: Boolean,
         activeIdx: Int,
