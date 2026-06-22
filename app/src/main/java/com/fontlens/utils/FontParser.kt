@@ -104,9 +104,12 @@ object FontParser {
         }
 
         val supportedChars = parseCmap(buf, raw, tableMap)
-        val analysisResult = ScriptCoverageAnalyzer.analyzeWithAscii(supportedChars, langCoverageThreshold)
-        val scriptCodes    = analysisResult.scriptCodes
-        val isAsciiLegacy  = analysisResult.isAsciiLegacy
+        val scriptCodes = ScriptCoverageAnalyzer.analyze(supportedChars, langCoverageThreshold)
+
+        // ANSI legacy detection: name contains "ansi" (case-insensitive) AND cmap < 256 chars
+        val isAnsiLegacy = supportedChars.size < 256 &&
+            (family.contains("ansi", ignoreCase = true) ||
+             fullName.contains("ansi", ignoreCase = true))
 
         val weightName = mapOf(
             100 to "Thin", 200 to "ExtraLight", 300 to "Light", 400 to "Regular",
@@ -124,7 +127,7 @@ object FontParser {
             condensedSupport = condensedSupport, extendedSupport = extendedSupport,
             isBold = isBold, isItalic = isItalic, isRegular = isRegular,
             tables = tableMap.keys.toList(), supportedChars = supportedChars,
-            scriptCodes = scriptCodes, isAsciiLegacy = isAsciiLegacy
+            scriptCodes = scriptCodes, isAnsiLegacy = isAnsiLegacy
         )
     }
 

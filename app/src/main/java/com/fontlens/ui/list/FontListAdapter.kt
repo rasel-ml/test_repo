@@ -218,7 +218,7 @@ class FontListAdapter(
                 if (selected.contains(font.id)) selected.remove(font.id) else selected.add(font.id)
                 onSelectionChanged(selected.toSet()); notifyItemChanged(holder.adapterPosition)
             }
-            // Non-selection tap on card body does nothing — user must tap sample text
+            // Non-selection tap on card body does nothing — tap sample text to preview
         }
         b.root.setOnLongClickListener {
             if (!selectionMode) {
@@ -231,10 +231,7 @@ class FontListAdapter(
         b.tvPreviewLarge.isClickable = true
         b.tvPreviewLarge.isFocusable = true
         b.tvPreviewLarge.setOnClickListener {
-            if (!selectionMode) {
-                val currentText = b.tvPreviewLarge.text.toString()
-                onSampleClick(font, currentText)
-            }
+            if (!selectionMode) onSampleClick(font, b.tvPreviewLarge.text.toString())
         }
     }
 
@@ -257,25 +254,23 @@ class FontListAdapter(
         val container = b.llScriptChips   // reuse existing LinearLayout inside HorizontalScrollView
         container.removeAllViews()
 
-        // ASCII-legacy: codes list will contain "ascii" as the only entry.
-        // Show it as a special badge with accent styling, no cycling needed.
-        if (font.effectiveMeta.isAsciiLegacy) {
+        val totalLabels = (if (showDefault) 1 else 0) + codes.size
+        if (font.effectiveMeta.isAnsiLegacy) {
+            // ANSI legacy: show a single non-interactive "ANSI" badge
             b.hsvScriptChips.visibility = View.VISIBLE
+            container.removeAllViews()
             val dp = ctx.resources.displayMetrics.density
             val tv = TextView(ctx)
-            tv.text     = "ASCII"
+            tv.text     = "ANSI"
             tv.textSize = 12.5f
             tv.setTextColor(p.accent)
             tv.setTypeface(tv.typeface, Typeface.BOLD)
-            val padH = (6f * dp).toInt(); val padV = (2f * dp).toInt()
-            tv.setPadding(padH, padV, padH, padV)
+            tv.setPadding((4f * dp).toInt(), (2f * dp).toInt(), (4f * dp).toInt(), (2f * dp).toInt())
             tv.layoutParams = ViewGroup.MarginLayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             container.addView(tv)
             return
         }
-
-        val totalLabels = (if (showDefault) 1 else 0) + codes.size
         if (totalLabels == 0) {
             b.hsvScriptChips.visibility = View.GONE
             return
@@ -451,14 +446,10 @@ class FontListAdapter(
         tf: Typeface
     ) {
         val m = font.effectiveMeta
-        val isAscii = m.isAsciiLegacy
-
         val text = when {
-            // ASCII-legacy: embedded sample text has highest priority always
-            isAscii && m.sampleText.isNotEmpty() -> m.sampleText
-            // ASCII-legacy fallback: use the "ascii" sample entry label
-            isAscii -> FontRepository.getSampleForLang("ascii") ?: "ASCII"
-            // Normal default (embedded)
+            // ANSI legacy: embedded sample text highest priority always, else "ANSI" label
+            m.isAnsiLegacy && m.sampleText.isNotEmpty() -> m.sampleText
+            m.isAnsiLegacy -> FontRepository.getSampleForLang("ansi") ?: "ANSI"
             activeIdx == -1 && showDefault -> m.sampleText
             codes.isNotEmpty() && activeIdx in codes.indices -> {
                 val code = codes[activeIdx]
@@ -468,13 +459,5 @@ class FontListAdapter(
         }
         b.tvPreviewLarge.text     = text.replace("\n", "  ").replace("\r", "")
         b.tvPreviewLarge.typeface = tf
-
-        // Subtle clickable visual — ripple background
-        b.tvPreviewLarge.setBackgroundResource(android.R.attr.selectableItemBackground.let { attr ->
-            val ta = b.tvPreviewLarge.context.obtainStyledAttributes(intArrayOf(attr))
-            val res = ta.getResourceId(0, 0)
-            ta.recycle()
-            res
-        }.takeIf { it != 0 } ?: 0)
     }
 }

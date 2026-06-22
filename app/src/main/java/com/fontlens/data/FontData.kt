@@ -33,7 +33,7 @@ data class FontMeta(
     val tables: List<String> = emptyList(),
     val supportedChars: List<Int> = emptyList(),
     val scriptCodes: List<String> = emptyList(),
-    val isAsciiLegacy: Boolean = false
+    val isAnsiLegacy: Boolean = false
 )
 
 data class FontItem(
@@ -86,7 +86,7 @@ data class AppSettings(
 
 /** Built-in sample texts for all 29 scripts in ScriptCoverageAnalyzer */
 fun defaultLangSamples(): Map<String, String> = linkedMapOf(
-    "ascii"       to "ASCII",
+    "ansi"        to "ANSI",
     "latin"       to "The quick brown fox jumps over the lazy dog",
     "devanagari"  to "सभी मनुष्यों को गौरव और अधिकारों के मामले में जन्मजात स्वतन्त्रता",
     "bengali"     to "আমার সোনার বাংলা আমি তোমায় ভালোবাসি",
@@ -118,7 +118,7 @@ fun defaultLangSamples(): Map<String, String> = linkedMapOf(
 
 /** Display name for each script code */
 fun scriptDisplayName(code: String): String = when (code) {
-    "ascii"      -> "ASCII"
+    "ansi"       -> "ANSI"
     "latin"      -> "Latin"
     "devanagari" -> "Devanagari"
     "bengali"    -> "Bengali"
