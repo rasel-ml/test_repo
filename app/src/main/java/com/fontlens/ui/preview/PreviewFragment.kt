@@ -275,187 +275,307 @@ class PreviewFragment : Fragment() {
         // Working HSV state
         val hsv = FloatArray(3)
         Color.colorToHSV(initial, hsv)
-        var hue = hsv[0]
-        var sat = hsv[1]
+        var hue   = hsv[0]
+        var sat   = hsv[1]
         var value = hsv[2]
 
         fun currentColor() = Color.HSVToColor(floatArrayOf(hue, sat, value))
 
-        // ── Update all views when color changes (defined before views that reference it) ──
-        var previewBarRef: View? = null
-        var hexInputRef: android.widget.EditText? = null
+        // Forward-reference holders
+        var svViewRef:       View?                        = null
+        var hueViewRef:      View?                        = null
+        var prevBoxRef:      View?                        = null
+        var currBoxRef:      View?                        = null
+        var prevHexRef:      android.widget.TextView?     = null
+        var currHexRef:      android.widget.TextView?     = null
+        var hexInputRef:     android.widget.EditText?     = null
+        var suppressHexSync  = false
+
+        fun colorHex(c: Int) = String.format("#%06X", 0xFFFFFF and c)
+
         val updateAll: () -> Unit = {
             val color = currentColor()
-            previewBarRef?.setBackgroundColor(color)
-            hexInputRef?.setText(String.format("#%06X", 0xFFFFFF and color))
+            currBoxRef?.setBackgroundColor(color)
+            currHexRef?.text = colorHex(color)
+            if (!suppressHexSync) {
+                hexInputRef?.let { et ->
+                    suppressHexSync = true
+                    et.setText(colorHex(color))
+                    et.setSelection(et.text.length)
+                    suppressHexSync = false
+                }
+            }
+            svViewRef?.invalidate()
+            hueViewRef?.invalidate()
         }
 
-        // ── SV Square canvas view ─────────────────────────────────────────
-        val svSize = (260 * dp).toInt()
+        val pad   = (12 * dp).toInt()
+        val sqSz  = (0).toInt()   // will be set in onSizeChanged
+        val hueW  = (20 * dp).toInt()
+        val hueGap= (8  * dp).toInt()
 
-        val svView = object : View(ctx) {
-            var bitmap: Bitmap? = null
+        // ── SV Square ─────────────────────────────────────────────────────
+        val svView = object : android.view.View(ctx) {
+            var bmp: Bitmap? = null
 
             fun rebuild() {
-                val bmp = Bitmap.createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
-                val canvas = Canvas(bmp)
-                // White→hue gradient (saturation axis, horizontal)
+                if (width < 1 || height < 1) return
+                val b = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                val c = Canvas(b)
                 val hueColor = Color.HSVToColor(floatArrayOf(hue, 1f, 1f))
+                // Sat: white → pure hue (horizontal)
                 val satShader = LinearGradient(0f, 0f, width.toFloat(), 0f,
                     Color.WHITE, hueColor, Shader.TileMode.CLAMP)
-                // Transparent→black gradient (value axis, vertical)
+                // Val: transparent → black (vertical, multiplied)
                 val valShader = LinearGradient(0f, 0f, 0f, height.toFloat(),
                     Color.TRANSPARENT, Color.BLACK, Shader.TileMode.CLAMP)
-                val paint = Paint()
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
                 paint.shader = satShader
-                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+                c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
                 paint.shader = valShader
                 paint.xfermode = android.graphics.PorterDuffXfermode(PorterDuff.Mode.MULTIPLY)
-                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+                c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
                 paint.xfermode = null
-                bitmap = bmp
+                bmp = b
                 invalidate()
             }
 
-            override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) { rebuild() }
+            override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) = rebuild()
 
             override fun onDraw(canvas: Canvas) {
-                bitmap?.let { canvas.drawBitmap(it, 0f, 0f, null) }
-                // Draw crosshair
+                bmp?.let { canvas.drawBitmap(it, 0f, 0f, null) }
                 val cx = sat * width
                 val cy = (1f - value) * height
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG)
                 paint.style = Paint.Style.STROKE
-                paint.strokeWidth = 2f * dp
+                // Outer white ring
+                paint.strokeWidth = 3f * dp
                 paint.color = Color.WHITE
-                canvas.drawCircle(cx, cy, 10f * dp, paint)
+                canvas.drawCircle(cx, cy, 9f * dp, paint)
+                // Inner black ring
+                paint.strokeWidth = 1.5f * dp
                 paint.color = Color.BLACK
-                paint.strokeWidth = 1f * dp
-                canvas.drawCircle(cx, cy, 10f * dp, paint)
+                canvas.drawCircle(cx, cy, 9f * dp, paint)
             }
 
-            @SuppressLint("ClickableViewAccessibility")
             override fun onTouchEvent(e: MotionEvent): Boolean {
-                sat   = (e.x / width).coerceIn(0f, 1f)
-                value = 1f - (e.y / height).coerceIn(0f, 1f)
-                invalidate()
-                updateAll()
+                if (e.action == MotionEvent.ACTION_DOWN ||
+                    e.action == MotionEvent.ACTION_MOVE) {
+                    sat   = (e.x / width).coerceIn(0f, 1f)
+                    value = 1f - (e.y / height).coerceIn(0f, 1f)
+                    updateAll()
+                }
                 return true
             }
         }
-        svView.layoutParams = ViewGroup.LayoutParams(svSize, svSize)
+        svViewRef = svView
 
         // ── Hue bar ───────────────────────────────────────────────────────
-        val hueBarWidth  = (28 * dp).toInt()
-        val hueBarHeight = svSize
-
-        val hueView = object : View(ctx) {
-            var bitmap: Bitmap? = null
+        val hueView = object : android.view.View(ctx) {
+            var bmp: Bitmap? = null
 
             fun rebuild() {
-                val bmp = Bitmap.createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
-                val canvas = Canvas(bmp)
+                if (width < 1 || height < 1) return
+                val b = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                val c = Canvas(b)
                 val colors = IntArray(361) { i -> Color.HSVToColor(floatArrayOf(i.toFloat(), 1f, 1f)) }
-                val shader = LinearGradient(0f, 0f, 0f, height.toFloat(), colors, null, Shader.TileMode.CLAMP)
+                val shader = LinearGradient(0f, 0f, 0f, height.toFloat(),
+                    colors, null, Shader.TileMode.CLAMP)
                 val paint = Paint()
                 paint.shader = shader
-                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
-                bitmap = bmp
+                val r = (4 * dp)
+                c.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), r, r, paint)
+                bmp = b
                 invalidate()
             }
 
-            override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) { rebuild() }
+            override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) = rebuild()
 
             override fun onDraw(canvas: Canvas) {
-                bitmap?.let { canvas.drawBitmap(it, 0f, 0f, null) }
-                // Indicator line
-                val y = hue / 360f * height
+                bmp?.let { canvas.drawBitmap(it, 0f, 0f, null) }
+                // Thumb: rounded rectangle indicator
+                val y    = (hue / 360f * height).coerceIn(0f, height.toFloat())
+                val th   = 6f * dp
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG)
                 paint.color = Color.WHITE
-                paint.strokeWidth = 2.5f * dp
-                canvas.drawLine(0f, y, width.toFloat(), y, paint)
-                paint.color = Color.BLACK
+                paint.style = Paint.Style.FILL
+                canvas.drawRoundRect(RectF(1f * dp, y - th / 2, width - 1f * dp, y + th / 2),
+                    3f * dp, 3f * dp, paint)
+                paint.color = Color.argb(120, 0, 0, 0)
+                paint.style = Paint.Style.STROKE
                 paint.strokeWidth = 1f * dp
-                canvas.drawLine(0f, y, width.toFloat(), y, paint)
+                canvas.drawRoundRect(RectF(1f * dp, y - th / 2, width - 1f * dp, y + th / 2),
+                    3f * dp, 3f * dp, paint)
             }
 
-            @SuppressLint("ClickableViewAccessibility")
             override fun onTouchEvent(e: MotionEvent): Boolean {
-                hue = ((e.y / height) * 360f).coerceIn(0f, 360f)
-                svView.rebuild()
-                invalidate()
-                updateAll()
+                if (e.action == MotionEvent.ACTION_DOWN ||
+                    e.action == MotionEvent.ACTION_MOVE) {
+                    hue = ((e.y / height) * 360f).coerceIn(0f, 360f)
+                    svView.rebuild()
+                    invalidate()
+                    updateAll()
+                }
                 return true
             }
         }
-        hueView.layoutParams = ViewGroup.LayoutParams(hueBarWidth, hueBarHeight)
-
-        // ── Preview bar ───────────────────────────────────────────────────
-        val previewBar = View(ctx).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (40 * dp).toInt())
-            setBackgroundColor(initial)
-        }
-        previewBarRef = previewBar
-
-        // ── Hex input ─────────────────────────────────────────────────────
-        val pad = (12 * dp).toInt()
-        val hexInput = android.widget.EditText(ctx).apply {
-            hint      = "#RRGGBB"
-            setText(String.format("#%06X", 0xFFFFFF and initial))
-            setPadding(pad, (6 * dp).toInt(), pad, (6 * dp).toInt())
-            inputType = android.text.InputType.TYPE_CLASS_TEXT
-            maxLines  = 1
-        }
-        hexInputRef = hexInput
-
-        // ── Update all views when color changes ────────────────────────────
-        fun updateAll() {
-            val color = currentColor()
-            previewBar.setBackgroundColor(color)
-            hexInput.setText(String.format("#%06X", 0xFFFFFF and color))
-        }
-
-        // Store reference so touch handlers can call it
-        val updateAllRef = ::updateAll
+        hueViewRef = hueView
 
         // ── Picker row: [SV square] [gap] [hue bar] ───────────────────────
         val pickerRow = android.widget.LinearLayout(ctx).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL
             gravity     = android.view.Gravity.CENTER_VERTICAL
-            setPadding(pad, pad, pad, (6 * dp).toInt())
+            setPadding(pad, pad, pad, 0)
+        }
+        val svLp  = android.widget.LinearLayout.LayoutParams(0, (220 * dp).toInt(), 1f)
+        svView.layoutParams = svLp
+        val hueLp = android.widget.LinearLayout.LayoutParams(hueW, (220 * dp).toInt())
+        hueView.layoutParams = hueLp
+        val gapV  = android.view.View(ctx).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(hueGap, 1)
         }
         pickerRow.addView(svView)
-        val gap = View(ctx).apply { layoutParams = ViewGroup.LayoutParams((10 * dp).toInt(), 1) }
-        pickerRow.addView(gap)
+        pickerRow.addView(gapV)
         pickerRow.addView(hueView)
 
-        // ── Container ─────────────────────────────────────────────────────
-        val container = android.widget.LinearLayout(ctx).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            addView(previewBar)
-            addView(pickerRow)
-            addView(hexInput)
+        // ── Hex row: [prev hex] [arrow] [curr hex] ────────────────────────
+        val prevHex = android.widget.TextView(ctx).apply {
+            text      = colorHex(initial)
+            textSize  = 12f
+            setTextColor(Color.argb(140, 80, 80, 80))
+            gravity   = android.view.Gravity.CENTER
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        prevHexRef = prevHex
+
+        val arrowHex = android.widget.TextView(ctx).apply {
+            text      = "→"
+            textSize  = 14f
+            setTextColor(Color.argb(160, 80, 80, 80))
+            gravity   = android.view.Gravity.CENTER
+            setPadding((6 * dp).toInt(), 0, (6 * dp).toInt(), 0)
         }
 
-        // Sync hex input → HSV
+        val currHex = android.widget.TextView(ctx).apply {
+            text      = colorHex(initial)
+            textSize  = 12f
+            setTextColor(Color.argb(220, 20, 20, 20))
+            gravity   = android.view.Gravity.CENTER
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        currHexRef = currHex
+
+        val hexLabelRow = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity     = android.view.Gravity.CENTER_VERTICAL
+            setPadding(pad, (10 * dp).toInt(), pad, (4 * dp).toInt())
+            addView(prevHex)
+            addView(arrowHex)
+            addView(currHex)
+        }
+
+        // ── Color preview boxes: [prev] [arrow] [curr] ────────────────────
+        val boxH    = (44 * dp).toInt()
+        val boxCorner = 8f * dp
+
+        val prevBox = object : android.view.View(ctx) {
+            override fun onDraw(canvas: Canvas) {
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+                paint.color = initial
+                canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()),
+                    boxCorner, boxCorner, paint)
+                paint.color = Color.argb(30, 0, 0, 0)
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = 1f * dp
+                canvas.drawRoundRect(RectF(0.5f * dp, 0.5f * dp,
+                    width - 0.5f * dp, height - 0.5f * dp), boxCorner, boxCorner, paint)
+            }
+        }.apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(0, boxH, 1f)
+        }
+        prevBoxRef = prevBox
+
+        val arrowBox = android.widget.TextView(ctx).apply {
+            text      = "→"
+            textSize  = 18f
+            setTextColor(Color.argb(160, 80, 80, 80))
+            gravity   = android.view.Gravity.CENTER
+            setPadding((8 * dp).toInt(), 0, (8 * dp).toInt(), 0)
+        }
+
+        val currBox = object : android.view.View(ctx) {
+            override fun onDraw(canvas: Canvas) {
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+                paint.color = currentColor()
+                canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()),
+                    boxCorner, boxCorner, paint)
+                paint.color = Color.argb(30, 0, 0, 0)
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = 1f * dp
+                canvas.drawRoundRect(RectF(0.5f * dp, 0.5f * dp,
+                    width - 0.5f * dp, height - 0.5f * dp), boxCorner, boxCorner, paint)
+            }
+        }.apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(0, boxH, 1f)
+        }
+        currBoxRef = currBox
+
+        val previewRow = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity     = android.view.Gravity.CENTER_VERTICAL
+            setPadding(pad, 0, pad, (10 * dp).toInt())
+            addView(prevBox)
+            addView(arrowBox)
+            addView(currBox)
+        }
+
+        // ── Hex text input ─────────────────────────────────────────────────
+        val hexInput = android.widget.EditText(ctx).apply {
+            hint      = "#RRGGBB"
+            setText(colorHex(initial))
+            setSelection(text.length)
+            setPadding(pad, (6 * dp).toInt(), pad, (6 * dp).toInt())
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            maxLines  = 1
+            gravity   = android.view.Gravity.CENTER
+            textSize  = 13f
+            setTypeface(android.graphics.Typeface.MONOSPACE)
+        }
+        hexInputRef = hexInput
+
         hexInput.addTextChangedListener(object : android.text.TextWatcher {
             override fun afterTextChanged(s: android.text.Editable?) {
+                if (suppressHexSync) return
                 val str = s.toString().trim().let { if (it.startsWith("#")) it else "#$it" }
                 if (str.length == 7) {
                     try {
                         val parsed = Color.parseColor(str)
-                        val h = FloatArray(3)
-                        Color.colorToHSV(parsed, h)
-                        hue   = h[0]; sat = h[1]; value = h[2]
+                        val h = FloatArray(3); Color.colorToHSV(parsed, h)
+                        hue = h[0]; sat = h[1]; value = h[2]
+                        suppressHexSync = true
                         svView.rebuild()
                         hueView.invalidate()
-                        previewBar.setBackgroundColor(parsed)
+                        currBox.invalidate()
+                        currHex.text = colorHex(currentColor())
+                        suppressHexSync = false
                     } catch (_: Exception) {}
                 }
             }
             override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
             override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {}
         })
+
+        // ── Container ─────────────────────────────────────────────────────
+        val container = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            addView(pickerRow)
+            addView(hexLabelRow)
+            addView(previewRow)
+            addView(hexInput)
+        }
 
         android.app.AlertDialog.Builder(ctx)
             .setTitle(title)
