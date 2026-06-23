@@ -80,8 +80,11 @@ class SampleManagerFragment : Fragment() {
             }
 
             override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
-                // Don't allow dropping ON the divider — allow above/below it
-                if (target is LangSampleAdapter.DividerVH) return false
+                // If target IS the divider, swap the language past it so user can cross the line
+                if (target is LangSampleAdapter.DividerVH) {
+                    adapter.moveItem(vh.adapterPosition, target.adapterPosition)
+                    return true
+                }
                 adapter.moveItem(vh.adapterPosition, target.adapterPosition)
                 return true
             }
@@ -272,10 +275,10 @@ class LangSampleAdapter(
     }
 
     fun moveItem(from: Int, to: Int) {
+        // Only lang items can be moved; divider itself can't be dragged
         if (items[from] is SampleListItem.Divider) return
         val item = items.removeAt(from)
         items.add(to, item)
-        // Rebind affected range to update hidden styling
         val start = minOf(from, to)
         val end   = maxOf(from, to)
         notifyItemMoved(from, to)
