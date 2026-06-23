@@ -80,12 +80,17 @@ class SampleManagerFragment : Fragment() {
             }
 
             override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
-                // If target IS the divider, swap the language past it so user can cross the line
-                if (target is LangSampleAdapter.DividerVH) {
-                    adapter.moveItem(vh.adapterPosition, target.adapterPosition)
-                    return true
-                }
+                if (vh is LangSampleAdapter.DividerVH) return false
                 adapter.moveItem(vh.adapterPosition, target.adapterPosition)
+                // Update alpha on all visible views immediately during drag
+                for (i in 0 until rv.childCount) {
+                    val child = rv.getChildAt(i)
+                    val pos   = rv.getChildAdapterPosition(child)
+                    if (pos == RecyclerView.NO_ID.toInt()) continue
+                    val divPos = adapter.dividerPosition()
+                    val shouldFade = divPos >= 0 && pos > divPos
+                    if (child != vh.itemView) child.alpha = if (shouldFade) 0.38f else 1f
+                }
                 return true
             }
 
@@ -160,7 +165,7 @@ class SampleManagerFragment : Fragment() {
 // ── Adapter ───────────────────────────────────────────────────────────────────
 
 class LangSampleAdapter(
-    private val items: MutableList<SampleListItem>,
+    val items: MutableList<SampleListItem>,
     private val onChanged: (List<SampleListItem>) -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -274,15 +279,17 @@ class LangSampleAdapter(
         }
     }
 
+    fun dividerPosition() = items.indexOfFirst { it is SampleListItem.Divider }
+
     fun moveItem(from: Int, to: Int) {
-        // Only lang items can be moved; divider itself can't be dragged
         if (items[from] is SampleListItem.Divider) return
         val item = items.removeAt(from)
         items.add(to, item)
         val start = minOf(from, to)
         val end   = maxOf(from, to)
         notifyItemMoved(from, to)
-        notifyItemRangeChanged(start, end - start + 1)
+        // Notify full affected range so hidden/visible alpha updates instantly
+        notifyItemRangeChanged(start, end - start + 2)
         onChanged(items.toList())
     }
 }
