@@ -45,6 +45,16 @@
                 android:gravity="center_vertical"
                 android:layout_marginBottom="6dp">
 
+                <!-- Language · Script name -->
+                <TextView
+                    android:id="@+id/tv_script_name"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="?attr/textPrimary"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
                 <!-- ISO badge left, beside name, accent_bg -->
                 <TextView
                     android:id="@+id/tv_script_code"
@@ -61,17 +71,7 @@
                     android:paddingTop="2dp"
                     android:paddingBottom="2dp"
                     android:layout_marginEnd="8dp" />
-
-                <!-- Language · Script name -->
-                <TextView
-                    android:id="@+id/tv_script_name"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textColor="?attr/textPrimary"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
+                    
                 <!-- Restore default icon button: small, square with rounded edges, accent_bg -->
                 <ImageButton
                     android:id="@+id/btn_restore_default"
@@ -80,7 +80,7 @@
                     android:layout_marginStart="8dp"
                     android:src="@drawable/ic_refresh"
                     android:background="@drawable/bg_icon_btn"
-                    android:backgroundTint="?attr/colorPrimary"
+                    android:backgroundTint="?attr/accentDim"
                     app:tint="#FFFFFF"
                     android:padding="5dp"
                     android:contentDescription="Restore default"
