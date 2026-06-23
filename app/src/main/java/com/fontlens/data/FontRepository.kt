@@ -291,17 +291,20 @@ object FontRepository {
         val seen = mutableSetOf<String>()
         val ordered = mutableListOf<String>()
         for (iso in settings.langOrder) {
+            if (iso == "ansi") continue  // ANSI shown as special badge, not script chip
             val scriptCode = com.fontlens.data.ALL_LANGUAGES.find { it.isoCode == iso }?.scriptCode ?: continue
             if (scriptCode in fontScripts && seen.add(scriptCode)) {
-                // Only add script if at least one of its languages is visible
                 val hasVisibleLang = com.fontlens.data.languagesForScript(scriptCode)
+                    .filter { it.isoCode != "ansi" }
                     .any { it.isoCode in visible }
                 if (hasVisibleLang) ordered.add(scriptCode)
             }
         }
         for (code in font.effectiveMeta.scriptCodes) {
+            if (code == "ansi") continue
             if (code !in seen) {
                 val hasVisibleLang = com.fontlens.data.languagesForScript(code)
+                    .filter { it.isoCode != "ansi" }
                     .any { it.isoCode in visible }
                 if (hasVisibleLang) ordered.add(code)
             }

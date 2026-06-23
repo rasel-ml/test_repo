@@ -551,7 +551,7 @@ class FontListAdapter(
         val text = when {
             // ANSI legacy: embedded sample text highest priority always, else "ANSI" label
             m.isAnsiLegacy && m.sampleText.isNotEmpty() -> m.sampleText
-            m.isAnsiLegacy -> "ANSI"
+            m.isAnsiLegacy -> FontRepository.getSampleForIso("ansi") ?: "ANSI"
             activeIdx == -1 && showDefault -> m.sampleText
             codes.isNotEmpty() && activeIdx in codes.indices -> {
                 val code = codes[activeIdx]

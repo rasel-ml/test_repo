@@ -28,6 +28,10 @@ data class LanguageDef(
  */
 val ALL_LANGUAGES: List<LanguageDef> = listOf(
 
+    // ── ANSI legacy fonts ─────────────────────────────────────────────────
+    // Special entry: fonts that encode non-Latin scripts at ANSI/ASCII slots
+    LanguageDef("ANSI", "ansi", "ansi", emptyList()),
+
     // ── Latin script ──────────────────────────────────────────────────────
     // English — only A-Z/a-z, covered by base Latin
     LanguageDef("English",    "en", "latin", emptyList()),
@@ -361,6 +365,7 @@ fun supportedLanguages(
 
 /** Default sample texts keyed by ISO code. */
 fun defaultLanguageSamples(): Map<String, String> = mapOf(
+    "ansi"    to "ANSI Legacy Font — àáâãäåæçèéêëìíîï",
     "en"      to "The quick brown fox jumps over the lazy dog",
     "es"      to "El veloz murciélago hindú comía feliz cardillo y kiwi",
     "fr"      to "Portez ce vieux whisky au juge blond qui fume",
