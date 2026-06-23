@@ -1,13 +1,22 @@
 package com.fontlens.ui.preview
 
+import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ComposeShader
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -21,6 +30,18 @@ import com.fontlens.utils.ThemeManager
 import com.fontlens.utils.TypefaceLoader
 import kotlinx.coroutines.launch
 
+// ── Persistent preview state (survives navigation, cleared on app restart) ────
+
+object PreviewState {
+    var isBold:    Boolean = false
+    var isItalic:  Boolean = false
+    var fontSize:  Int     = 32
+    var fontColor: Int?    = null   // null = use theme default
+    var bgColor:   Int?    = null   // null = use theme default
+}
+
+// ── Fragment ──────────────────────────────────────────────────────────────────
+
 class PreviewFragment : Fragment() {
 
     private var _binding: FragmentPreviewBinding? = null
@@ -30,11 +51,14 @@ class PreviewFragment : Fragment() {
     private lateinit var storageDeleteHelper: StorageDeleteHelper
     private var pendingDeleteFontId: String? = null
 
-    private var isBold   = false
-    private var isItalic = false
-    private var fontSize = 32
-    private var fontColor: Int = Color.BLACK      // updated on view creation from theme
-    private var bgColor:   Int = Color.WHITE
+    // Local working copies — written back to PreviewState on every change
+    private var isBold    get() = PreviewState.isBold;    set(v) { PreviewState.isBold    = v }
+    private var isItalic  get() = PreviewState.isItalic;  set(v) { PreviewState.isItalic  = v }
+    private var fontSize  get() = PreviewState.fontSize;  set(v) { PreviewState.fontSize  = v }
+    private var fontColor get() = PreviewState.fontColor  ?: ThemeManager.activePalette.textPrimary
+                          set(v) { PreviewState.fontColor = v }
+    private var bgColor   get() = PreviewState.bgColor    ?: ThemeManager.activePalette.bgPrimary
+                          set(v) { PreviewState.bgColor   = v }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentPreviewBinding.inflate(inflater, container, false)
@@ -45,8 +69,6 @@ class PreviewFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val p = ThemeManager.activePalette
-        fontColor = p.textPrimary
-        bgColor   = p.bgPrimary
 
         storageDeleteHelper = StorageDeleteHelper(this) { success ->
             if (success) {
@@ -64,7 +86,7 @@ class PreviewFragment : Fragment() {
             ?: run { findNavController().popBackStack(); return }
         val tempMode = args.tempMode
 
-        // ── Header ───────────────────────────────────────────────────────
+        // ── Header ────────────────────────────────────────────────────────
         binding.tvFontName.text = font.effectiveMeta.family.ifEmpty { font.displayName }
         binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
 
@@ -113,7 +135,7 @@ class PreviewFragment : Fragment() {
             FontRepository.toggleFavorite(font.id, requireContext()); updateFav()
         }
 
-        // ── Navigation buttons ────────────────────────────────────────────
+        // ── Navigation ────────────────────────────────────────────────────
         binding.btnGlyph.setOnClickListener {
             findNavController().navigate(R.id.action_preview_to_glyph,
                 Bundle().apply { putString("fontId", font.id) })
@@ -131,7 +153,6 @@ class PreviewFragment : Fragment() {
         binding.etPreview.setText(
             args.initialSampleText.ifEmpty { FontRepository.getSampleText(font) }
         )
-        applyColors()
 
         // ── Typeface ──────────────────────────────────────────────────────
         fun applyTypeface() {
@@ -145,25 +166,39 @@ class PreviewFragment : Fragment() {
             binding.etPreview.setTypeface(tf, style)
         }
 
-        if (TypefaceLoader.isLoaded(font.id)) {
-            applyTypeface()
-        } else {
-            lifecycleScope.launch {
-                TypefaceLoader.loadSingle(requireContext(), font.id, font.uri)
-                if (_binding != null) applyTypeface()
-            }
+        if (TypefaceLoader.isLoaded(font.id)) applyTypeface()
+        else lifecycleScope.launch {
+            TypefaceLoader.loadSingle(requireContext(), font.id, font.uri)
+            if (_binding != null) applyTypeface()
         }
 
-        // ── Font size slider ──────────────────────────────────────────────
-        fontSize = 32
-        binding.seekbarSize.max      = 152
-        binding.seekbarSize.progress = fontSize - 8
-        binding.tvSizeLabel.text     = "${fontSize}px"
-        binding.etPreview.textSize   = fontSize.toFloat()
-
-        fun applySize() {
+        // ── Apply all persistent state ────────────────────────────────────
+        fun applyAll() {
+            // Size
             binding.tvSizeLabel.text   = "${fontSize}px"
             binding.etPreview.textSize = fontSize.toFloat()
+            binding.seekbarSize.progress = (fontSize - 8).coerceIn(0, 152)
+            // Colors
+            binding.etPreview.setTextColor(fontColor)
+            binding.etPreview.setBackgroundColor(bgColor)
+            binding.scrollPreview.setBackgroundColor(bgColor)
+            binding.fontColorIndicator.setBackgroundColor(fontColor)
+            binding.bgColorIndicator.setBackgroundColor(bgColor)
+            // Bold / Italic
+            binding.btnBold.setTextColor(if (isBold) p.accent else p.textMuted)
+            binding.btnItalic.setTextColor(if (isItalic) p.accent else p.textMuted)
+            binding.btnBold.setBackgroundResource(
+                if (isBold) R.drawable.bg_style_btn_active else R.drawable.bg_style_btn)
+            binding.btnItalic.setBackgroundResource(
+                if (isItalic) R.drawable.bg_style_btn_active else R.drawable.bg_style_btn)
+            applyTypeface()
+        }
+        applyAll()
+
+        // ── Size slider ───────────────────────────────────────────────────
+        fun applySize() {
+            binding.tvSizeLabel.text     = "${fontSize}px"
+            binding.etPreview.textSize   = fontSize.toFloat()
             binding.seekbarSize.progress = (fontSize - 8).coerceIn(0, 152)
         }
 
@@ -174,13 +209,8 @@ class PreviewFragment : Fragment() {
             override fun onStartTrackingTouch(sb: android.widget.SeekBar?) {}
             override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {}
         })
-
-        binding.btnSizeMinus.setOnClickListener {
-            if (fontSize > 8) { fontSize -= 2; applySize() }
-        }
-        binding.btnSizePlus.setOnClickListener {
-            if (fontSize < 160) { fontSize += 2; applySize() }
-        }
+        binding.btnSizeMinus.setOnClickListener { if (fontSize > 8)   { fontSize -= 2; applySize() } }
+        binding.btnSizePlus.setOnClickListener  { if (fontSize < 160) { fontSize += 2; applySize() } }
 
         // ── Bold / Italic ─────────────────────────────────────────────────
         fun updateStyle() {
@@ -195,144 +225,228 @@ class PreviewFragment : Fragment() {
         binding.btnBold.setOnClickListener   { isBold   = !isBold;   updateStyle() }
         binding.btnItalic.setOnClickListener { isItalic = !isItalic; updateStyle() }
 
-        // ── Font color picker ─────────────────────────────────────────────
+        // ── Color pickers ─────────────────────────────────────────────────
         binding.btnFontColor.setOnClickListener {
-            showColorPicker(initial = fontColor, title = "Font Color") { picked ->
+            showHsvColorPicker("Font Color", fontColor) { picked ->
                 fontColor = picked
-                applyColors()
+                binding.etPreview.setTextColor(fontColor)
+                binding.scrollPreview.setBackgroundColor(bgColor)
+                binding.fontColorIndicator.setBackgroundColor(fontColor)
             }
         }
-
-        // ── Background color picker ───────────────────────────────────────
         binding.btnBgColor.setOnClickListener {
-            showColorPicker(initial = bgColor, title = "Background Color") { picked ->
+            showHsvColorPicker("Background Color", bgColor) { picked ->
                 bgColor = picked
-                applyColors()
+                binding.etPreview.setBackgroundColor(bgColor)
+                binding.scrollPreview.setBackgroundColor(bgColor)
+                binding.bgColorIndicator.setBackgroundColor(bgColor)
             }
+        }
+
+        // ── Reset ─────────────────────────────────────────────────────────
+        binding.btnReset.setOnClickListener {
+            PreviewState.isBold    = false
+            PreviewState.isItalic  = false
+            PreviewState.fontSize  = 32
+            PreviewState.fontColor = null
+            PreviewState.bgColor   = null
+            applyAll()
         }
     }
 
-    // ── Color helpers ─────────────────────────────────────────────────────────
+    // ── HSV Color Picker ──────────────────────────────────────────────────────
+    //
+    // Layout: [  SV square  ] [ Hue bar ]
+    // - Hue bar: vertical gradient strip on the right, tap/drag to choose hue
+    // - SV square: left large area, X = saturation (0→1), Y = value (1→0)
+    // - Preview strip at top showing current color
+    // - Hex input at bottom
 
-    private fun applyColors() {
-        binding.etPreview.setTextColor(fontColor)
-        binding.etPreview.setBackgroundColor(bgColor)
-        binding.scrollPreview.setBackgroundColor(bgColor)
-        binding.fontColorIndicator.setBackgroundColor(fontColor)
-        binding.bgColorIndicator.setBackgroundColor(bgColor)
-    }
-
-    private fun showColorPicker(initial: Int, title: String, onPick: (Int) -> Unit) {
-        // Build a simple HSV color picker dialog using Android's built-in color int support
+    @SuppressLint("ClickableViewAccessibility")
+    private fun showHsvColorPicker(title: String, initial: Int, onPick: (Int) -> Unit) {
         val ctx = requireContext()
-
-        // Predefined palette for quick pick + manual RGB input
-        val colors = intArrayOf(
-            // Neutrals
-            Color.BLACK, Color.DKGRAY, Color.GRAY, Color.LTGRAY, Color.WHITE,
-            // Reds
-            0xFFB71C1C.toInt(), 0xFFE53935.toInt(), 0xFFEF9A9A.toInt(),
-            // Oranges
-            0xFFE65100.toInt(), 0xFFFB8C00.toInt(), 0xFFFFCC80.toInt(),
-            // Yellows
-            0xFFF9A825.toInt(), 0xFFFFEE58.toInt(), 0xFFFFF9C4.toInt(),
-            // Greens
-            0xFF1B5E20.toInt(), 0xFF2E7D32.toInt(), 0xFF66BB6A.toInt(), 0xFFC8E6C9.toInt(),
-            // Blues
-            0xFF0D47A1.toInt(), 0xFF1565C0.toInt(), 0xFF42A5F5.toInt(), 0xFFBBDEFB.toInt(),
-            // Purples
-            0xFF4A148C.toInt(), 0xFF7B1FA2.toInt(), 0xFFCE93D8.toInt(),
-            // Pinks
-            0xFF880E4F.toInt(), 0xFFEC407A.toInt(), 0xFFF48FB1.toInt(),
-        )
-
         val dp  = ctx.resources.displayMetrics.density
-        val pad = (12 * dp).toInt()
 
-        // Grid of color swatches
-        val grid = android.widget.GridLayout(ctx).apply {
-            columnCount = 5
-            setPadding(pad, pad, pad, 0)
-        }
+        // Working HSV state
+        val hsv = FloatArray(3)
+        Color.colorToHSV(initial, hsv)
+        var hue = hsv[0]
+        var sat = hsv[1]
+        var value = hsv[2]
 
-        val swatchSize = (44 * dp).toInt()
-        val swatchPad  = (3 * dp).toInt()
+        fun currentColor() = Color.HSVToColor(floatArrayOf(hue, sat, value))
 
-        colors.forEach { color ->
-            val swatch = View(ctx).apply {
-                layoutParams = android.widget.GridLayout.LayoutParams().apply {
-                    width  = swatchSize
-                    height = swatchSize
-                    setMargins(swatchPad, swatchPad, swatchPad, swatchPad)
-                }
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    shape        = android.graphics.drawable.GradientDrawable.RECTANGLE
-                    cornerRadius = 6 * dp
-                    setColor(color)
-                    // Border for light colors so they're visible
-                    setStroke((1 * dp).toInt(), Color.argb(40, 0, 0, 0))
-                }
-                setOnClickListener {
-                    onPick(color)
-                    // dismiss handled by dialog reference below
-                    (tag as? android.app.AlertDialog)?.dismiss()
-                }
+        // ── SV Square canvas view ─────────────────────────────────────────
+        val svSize = (260 * dp).toInt()
+
+        val svView = object : View(ctx) {
+            var bitmap: Bitmap? = null
+
+            fun rebuild() {
+                val bmp = Bitmap.createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bmp)
+                // White→hue gradient (saturation axis, horizontal)
+                val hueColor = Color.HSVToColor(floatArrayOf(hue, 1f, 1f))
+                val satShader = LinearGradient(0f, 0f, width.toFloat(), 0f,
+                    Color.WHITE, hueColor, Shader.TileMode.CLAMP)
+                // Transparent→black gradient (value axis, vertical)
+                val valShader = LinearGradient(0f, 0f, 0f, height.toFloat(),
+                    Color.TRANSPARENT, Color.BLACK, Shader.TileMode.CLAMP)
+                val paint = Paint()
+                paint.shader = satShader
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+                paint.shader = valShader
+                paint.xfermode = android.graphics.PorterDuffXfermode(PorterDuff.Mode.MULTIPLY)
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+                paint.xfermode = null
+                bitmap = bmp
+                invalidate()
             }
-            grid.addView(swatch)
-        }
 
-        // Current color preview + hex input
+            override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) { rebuild() }
+
+            override fun onDraw(canvas: Canvas) {
+                bitmap?.let { canvas.drawBitmap(it, 0f, 0f, null) }
+                // Draw crosshair
+                val cx = sat * width
+                val cy = (1f - value) * height
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = 2f * dp
+                paint.color = Color.WHITE
+                canvas.drawCircle(cx, cy, 10f * dp, paint)
+                paint.color = Color.BLACK
+                paint.strokeWidth = 1f * dp
+                canvas.drawCircle(cx, cy, 10f * dp, paint)
+            }
+
+            @SuppressLint("ClickableViewAccessibility")
+            override fun onTouchEvent(e: MotionEvent): Boolean {
+                sat   = (e.x / width).coerceIn(0f, 1f)
+                value = 1f - (e.y / height).coerceIn(0f, 1f)
+                invalidate()
+                updateAll()
+                return true
+            }
+        }
+        svView.layoutParams = ViewGroup.LayoutParams(svSize, svSize)
+
+        // ── Hue bar ───────────────────────────────────────────────────────
+        val hueBarWidth  = (28 * dp).toInt()
+        val hueBarHeight = svSize
+
+        val hueView = object : View(ctx) {
+            var bitmap: Bitmap? = null
+
+            fun rebuild() {
+                val bmp = Bitmap.createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bmp)
+                val colors = IntArray(361) { i -> Color.HSVToColor(floatArrayOf(i.toFloat(), 1f, 1f)) }
+                val shader = LinearGradient(0f, 0f, 0f, height.toFloat(), colors, null, Shader.TileMode.CLAMP)
+                val paint = Paint()
+                paint.shader = shader
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+                bitmap = bmp
+                invalidate()
+            }
+
+            override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) { rebuild() }
+
+            override fun onDraw(canvas: Canvas) {
+                bitmap?.let { canvas.drawBitmap(it, 0f, 0f, null) }
+                // Indicator line
+                val y = hue / 360f * height
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+                paint.color = Color.WHITE
+                paint.strokeWidth = 2.5f * dp
+                canvas.drawLine(0f, y, width.toFloat(), y, paint)
+                paint.color = Color.BLACK
+                paint.strokeWidth = 1f * dp
+                canvas.drawLine(0f, y, width.toFloat(), y, paint)
+            }
+
+            @SuppressLint("ClickableViewAccessibility")
+            override fun onTouchEvent(e: MotionEvent): Boolean {
+                hue = ((e.y / height) * 360f).coerceIn(0f, 360f)
+                svView.rebuild()
+                invalidate()
+                updateAll()
+                return true
+            }
+        }
+        hueView.layoutParams = ViewGroup.LayoutParams(hueBarWidth, hueBarHeight)
+
+        // ── Preview bar ───────────────────────────────────────────────────
         val previewBar = View(ctx).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (32 * dp).toInt())
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (40 * dp).toInt())
             setBackgroundColor(initial)
         }
 
+        // ── Hex input ─────────────────────────────────────────────────────
+        val pad = (12 * dp).toInt()
         val hexInput = android.widget.EditText(ctx).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            hint         = "#RRGGBB"
+            hint      = "#RRGGBB"
             setText(String.format("#%06X", 0xFFFFFF and initial))
-            setPadding(pad, (8 * dp).toInt(), pad, (8 * dp).toInt())
-            inputType    = android.text.InputType.TYPE_CLASS_TEXT
-            maxLines     = 1
+            setPadding(pad, (6 * dp).toInt(), pad, (6 * dp).toInt())
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            maxLines  = 1
         }
 
+        // ── Update all views when color changes ────────────────────────────
+        fun updateAll() {
+            val color = currentColor()
+            previewBar.setBackgroundColor(color)
+            hexInput.setText(String.format("#%06X", 0xFFFFFF and color))
+        }
+
+        // Store reference so touch handlers can call it
+        val updateAllRef = ::updateAll
+
+        // ── Picker row: [SV square] [gap] [hue bar] ───────────────────────
+        val pickerRow = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity     = android.view.Gravity.CENTER_VERTICAL
+            setPadding(pad, pad, pad, (6 * dp).toInt())
+        }
+        pickerRow.addView(svView)
+        val gap = View(ctx).apply { layoutParams = ViewGroup.LayoutParams((10 * dp).toInt(), 1) }
+        pickerRow.addView(gap)
+        pickerRow.addView(hueView)
+
+        // ── Container ─────────────────────────────────────────────────────
         val container = android.widget.LinearLayout(ctx).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             addView(previewBar)
-            addView(grid)
+            addView(pickerRow)
             addView(hexInput)
         }
 
-        val dialog = android.app.AlertDialog.Builder(ctx)
-            .setTitle(title)
-            .setView(container)
-            .setPositiveButton("Apply") { _, _ ->
-                val hex = hexInput.text.toString().trim()
-                try {
-                    onPick(Color.parseColor(if (hex.startsWith("#")) hex else "#$hex"))
-                } catch (e: Exception) { /* ignore invalid hex */ }
-            }
-            .setNegativeButton("Cancel", null)
-            .create()
-
-        // Tag each swatch with the dialog for dismiss on tap
-        for (i in 0 until grid.childCount) {
-            grid.getChildAt(i).tag = dialog
-        }
-
-        // Update preview bar as user types hex
+        // Sync hex input → HSV
         hexInput.addTextChangedListener(object : android.text.TextWatcher {
             override fun afterTextChanged(s: android.text.Editable?) {
-                try {
-                    val c = Color.parseColor(s.toString().let { if (it.startsWith("#")) it else "#$it" })
-                    previewBar.setBackgroundColor(c)
-                } catch (_: Exception) {}
+                val str = s.toString().trim().let { if (it.startsWith("#")) it else "#$it" }
+                if (str.length == 7) {
+                    try {
+                        val parsed = Color.parseColor(str)
+                        val h = FloatArray(3)
+                        Color.colorToHSV(parsed, h)
+                        hue   = h[0]; sat = h[1]; value = h[2]
+                        svView.rebuild()
+                        hueView.invalidate()
+                        previewBar.setBackgroundColor(parsed)
+                    } catch (_: Exception) {}
+                }
             }
             override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
             override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {}
         })
 
-        dialog.show()
+        android.app.AlertDialog.Builder(ctx)
+            .setTitle(title)
+            .setView(container)
+            .setPositiveButton("Apply") { _, _ -> onPick(currentColor()) }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     override fun onDestroyView() { super.onDestroyView(); _binding = null }
