@@ -276,6 +276,15 @@ class PreviewFragment : Fragment() {
 
         fun currentColor() = Color.HSVToColor(floatArrayOf(hue, sat, value))
 
+        // ── Update all views when color changes (defined before views that reference it) ──
+        var previewBarRef: View? = null
+        var hexInputRef: android.widget.EditText? = null
+        val updateAll: () -> Unit = {
+            val color = currentColor()
+            previewBarRef?.setBackgroundColor(color)
+            hexInputRef?.setText(String.format("#%06X", 0xFFFFFF and color))
+        }
+
         // ── SV Square canvas view ─────────────────────────────────────────
         val svSize = (260 * dp).toInt()
 
@@ -381,6 +390,7 @@ class PreviewFragment : Fragment() {
             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (40 * dp).toInt())
             setBackgroundColor(initial)
         }
+        previewBarRef = previewBar
 
         // ── Hex input ─────────────────────────────────────────────────────
         val pad = (12 * dp).toInt()
@@ -391,6 +401,7 @@ class PreviewFragment : Fragment() {
             inputType = android.text.InputType.TYPE_CLASS_TEXT
             maxLines  = 1
         }
+        hexInputRef = hexInput
 
         // ── Update all views when color changes ────────────────────────────
         fun updateAll() {
