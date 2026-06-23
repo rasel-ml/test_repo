@@ -68,6 +68,9 @@ data class AppSettings(
     val langSamplesByIso: Map<String, String> = defaultLanguageSamples(),
     // langOrder: user-defined order of ISO language codes — drives row order and default sample
     val langOrder: List<String> = defaultLanguageSamples().keys.toList(),
+    // dividerPosition: index in langOrder where hidden languages start (inclusive)
+    // -1 means no divider / nothing hidden
+    val dividerPosition: Int = -1,
     val samplePriority: SamplePriority = SamplePriority.METADATA_FIRST,
     val glyphShowAll: Boolean = false,
     // Legacy kept for Gson backward compat

@@ -206,12 +206,20 @@ object FontRepository {
             .apply()
     }
 
+    /** Returns ISO codes that are currently visible (above divider). */
+    fun visibleIsos(): Set<String> {
+        val s = settings
+        val div = s.dividerPosition
+        return if (div < 0) s.langOrder.toSet()
+               else s.langOrder.take(div).toSet()
+    }
+
     /**
      * Returns the best sample text for a font card / preview.
      * Priority:
      *   1. Font's built-in metadata sample text (if preferMetaSample ON)
-     *   2. First language in langOrder that the font supports (has all required glyphs)
-     *   3. First language in langOrder regardless of font support
+     *   2. First visible language in langOrder that the font supports
+     *   3. First visible language in langOrder regardless of font support
      *   4. Fallback pangram
      */
     fun getSampleText(font: FontItem): String {
@@ -219,17 +227,17 @@ object FontRepository {
         val metaText = font.effectiveMeta.sampleText
         if (s.preferMetaSample && metaText.isNotEmpty()) return metaText
         val charSet = font.effectiveMeta.supportedChars.toHashSet()
-        // Try first supported language in user order
+        val visible = visibleIsos()
         val fromSupported = s.langOrder.firstNotNullOfOrNull { iso ->
+            if (iso !in visible) return@firstNotNullOfOrNull null
             val lang = com.fontlens.data.ALL_LANGUAGES.find { it.isoCode == iso } ?: return@firstNotNullOfOrNull null
             if (lang.requiredChars.all { charSet.contains(it) })
                 s.langSamplesByIso[iso]?.ifEmpty { null }
             else null
         }
         if (fromSupported != null) return fromSupported
-        // Fall back to any sample in order
         return s.langOrder.firstNotNullOfOrNull { iso ->
-            s.langSamplesByIso[iso]?.ifEmpty { null }
+            if (iso !in visible) null else s.langSamplesByIso[iso]?.ifEmpty { null }
         } ?: "The quick brown fox jumps over the lazy dog"
     }
 
@@ -239,51 +247,64 @@ object FontRepository {
             ?: com.fontlens.data.defaultLanguageSamples()[isoCode]
 
     /**
-     * Default sample for a script = sample of the first language in langOrder
-     * that belongs to this script and the font supports.
-     * Falls back to first language of this script in langOrder regardless of support.
+     * Default sample for a script = first visible language in langOrder
+     * belonging to this script that the font supports.
      */
     fun getDefaultSampleForScript(font: FontItem, scriptCode: String): String? {
         val s = settings
         val charSet = font.effectiveMeta.supportedChars.toHashSet()
         val scriptLangs = com.fontlens.data.languagesForScript(scriptCode)
         val scriptIsos = scriptLangs.map { it.isoCode }.toSet()
+        val visible = visibleIsos()
         return s.langOrder.firstNotNullOfOrNull { iso ->
-            if (iso !in scriptIsos) return@firstNotNullOfOrNull null
+            if (iso !in visible || iso !in scriptIsos) return@firstNotNullOfOrNull null
             val lang = scriptLangs.find { it.isoCode == iso } ?: return@firstNotNullOfOrNull null
             if (lang.requiredChars.all { charSet.contains(it) })
                 s.langSamplesByIso[iso]?.ifEmpty { null }
             else null
         } ?: s.langOrder.firstNotNullOfOrNull { iso ->
-            if (iso in scriptIsos) s.langSamplesByIso[iso]?.ifEmpty { null } else null
+            if (iso !in visible || iso !in scriptIsos) null
+            else s.langSamplesByIso[iso]?.ifEmpty { null }
         }
     }
 
     /**
-     * Returns languages supported by this font for a given script, in langOrder.
-     * Empty if fewer than 2 languages pass.
+     * Returns visible languages supported by this font for a given script, in langOrder.
+     * Hidden languages (below divider) are excluded.
+     * Empty if fewer than 2 pass.
      */
     fun getSupportedLanguages(font: FontItem, scriptCode: String): List<com.fontlens.data.LanguageDef> {
         val charSet = font.effectiveMeta.supportedChars.toHashSet()
+        val visible = visibleIsos()
         return com.fontlens.data.supportedLanguages(scriptCode, charSet, settings.langOrder)
+            .filter { it.isoCode in visible }
+            .let { if (it.size <= 1) emptyList() else it }
     }
 
     /**
-     * Returns script codes to display on a font card.
-     * Order: first appearance of each script in langOrder, limited to scripts the font supports.
+     * Returns script codes to show on font card.
+     * A script is hidden if ALL its languages are below the divider.
      */
     fun orderedScriptCodesForFont(font: FontItem): List<String> {
         val fontScripts = font.effectiveMeta.scriptCodes.toSet()
+        val visible = visibleIsos()
         val seen = mutableSetOf<String>()
         val ordered = mutableListOf<String>()
-        // Walk langOrder to get script order from language order
         for (iso in settings.langOrder) {
             val scriptCode = com.fontlens.data.ALL_LANGUAGES.find { it.isoCode == iso }?.scriptCode ?: continue
-            if (scriptCode in fontScripts && seen.add(scriptCode)) ordered.add(scriptCode)
+            if (scriptCode in fontScripts && seen.add(scriptCode)) {
+                // Only add script if at least one of its languages is visible
+                val hasVisibleLang = com.fontlens.data.languagesForScript(scriptCode)
+                    .any { it.isoCode in visible }
+                if (hasVisibleLang) ordered.add(scriptCode)
+            }
         }
-        // Append any font scripts not covered by langOrder
         for (code in font.effectiveMeta.scriptCodes) {
-            if (code !in seen) ordered.add(code)
+            if (code !in seen) {
+                val hasVisibleLang = com.fontlens.data.languagesForScript(code)
+                    .any { it.isoCode in visible }
+                if (hasVisibleLang) ordered.add(code)
+            }
         }
         return ordered
     }

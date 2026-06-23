@@ -1,14 +1,19 @@
 package com.fontlens.ui.settings
 
+import android.graphics.Canvas
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.fontlens.R
 import com.fontlens.data.ALL_LANGUAGES
 import com.fontlens.data.FontRepository
 import com.fontlens.data.defaultLanguageSamples
@@ -16,6 +21,21 @@ import com.fontlens.data.isSingleNameScript
 import com.fontlens.data.scriptDisplayName
 import com.fontlens.databinding.FragmentSampleManagerBinding
 import com.fontlens.databinding.ItemSampleScriptBinding
+
+// ── List item types ───────────────────────────────────────────────────────────
+
+sealed class SampleListItem {
+    data class Lang(
+        val isoCode: String,
+        var sampleText: String,
+        val label: String,
+        val isoLabel: String
+    ) : SampleListItem()
+
+    object Divider : SampleListItem()
+}
+
+// ── Fragment ──────────────────────────────────────────────────────────────────
 
 class SampleManagerFragment : Fragment() {
 
@@ -32,9 +52,17 @@ class SampleManagerFragment : Fragment() {
         binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
 
         val adapter = LangSampleAdapter(buildItems()) { updatedItems ->
+            // Separate visible (above divider) from hidden (below)
+            val dividerIdx = updatedItems.indexOfFirst { it is SampleListItem.Divider }
+            val allLangs = updatedItems.filterIsInstance<SampleListItem.Lang>()
+            val newOrder = allLangs.map { it.isoCode }
+            val newDividerPos = if (dividerIdx < 0) -1 else
+                updatedItems.take(dividerIdx).filterIsInstance<SampleListItem.Lang>().size
+
             FontRepository.settings = FontRepository.settings.copy(
-                langOrder        = updatedItems.map { it.isoCode },
-                langSamplesByIso = updatedItems.associate { it.isoCode to it.sampleText }
+                langOrder        = newOrder,
+                langSamplesByIso = allLangs.associate { it.isoCode to it.sampleText },
+                dividerPosition  = newDividerPos
             )
             FontRepository.saveSettings(requireContext())
         }
@@ -45,97 +73,183 @@ class SampleManagerFragment : Fragment() {
         val touchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
         ) {
+            override fun getMovementFlags(rv: RecyclerView, vh: RecyclerView.ViewHolder): Int {
+                // Divider row is not draggable itself
+                return if (vh is LangSampleAdapter.DividerVH) 0
+                       else makeMovementFlags(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0)
+            }
+
             override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
+                // Don't allow dropping ON the divider — allow above/below it
+                if (target is LangSampleAdapter.DividerVH) return false
                 adapter.moveItem(vh.adapterPosition, target.adapterPosition)
                 return true
             }
+
             override fun onSwiped(vh: RecyclerView.ViewHolder, dir: Int) {}
+
             override fun onSelectedChanged(vh: RecyclerView.ViewHolder?, actionState: Int) {
                 super.onSelectedChanged(vh, actionState)
-                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
-                    vh?.itemView?.alpha  = 0.85f
-                    vh?.itemView?.scaleX = 1.02f
-                    vh?.itemView?.scaleY = 1.02f
+                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && vh is LangSampleAdapter.LangVH) {
+                    vh.itemView.alpha  = 0.85f
+                    vh.itemView.scaleX = 1.02f
+                    vh.itemView.scaleY = 1.02f
                 }
             }
+
             override fun clearView(rv: RecyclerView, vh: RecyclerView.ViewHolder) {
                 super.clearView(rv, vh)
                 vh.itemView.alpha  = 1f
                 vh.itemView.scaleX = 1f
                 vh.itemView.scaleY = 1f
             }
+
+            // Draw drag shadow over divider during drag so user sees they're crossing it
+            override fun onChildDraw(
+                c: Canvas, rv: RecyclerView, vh: RecyclerView.ViewHolder,
+                dX: Float, dY: Float, actionState: Int, isCurrentlyActive: Boolean
+            ) {
+                super.onChildDraw(c, rv, vh, dX, dY, actionState, isCurrentlyActive)
+            }
         })
         touchHelper.attachToRecyclerView(binding.rvScripts)
         adapter.touchHelper = touchHelper
     }
 
-    private fun buildItems(): MutableList<LangItem> {
+    private fun buildItems(): MutableList<SampleListItem> {
         val s        = FontRepository.settings
         val defaults = defaultLanguageSamples()
 
-        // Deduplicate ALL_LANGUAGES by ISO code
         val seen = mutableSetOf<String>()
         val allLangs = ALL_LANGUAGES.filter { seen.add(it.isoCode) }
-
-        // Start from user's saved order, then append any new languages not yet in the list
         val orderedIsos = (s.langOrder + allLangs.map { it.isoCode }).distinct()
 
-        return orderedIsos.mapNotNull { iso ->
+        val langItems = orderedIsos.mapNotNull { iso ->
             val lang = allLangs.find { it.isoCode == iso } ?: return@mapNotNull null
-            // Label: "Language · Script" or just "Language" if single-name script
             val label = if (isSingleNameScript(lang.scriptCode)) lang.name
                         else "${lang.name} · ${scriptDisplayName(lang.scriptCode)}"
-            LangItem(
+            SampleListItem.Lang(
                 isoCode    = iso,
                 sampleText = s.langSamplesByIso[iso] ?: defaults[iso] ?: "",
                 label      = label,
                 isoLabel   = iso.uppercase()
             )
-        }.toMutableList()
+        }
+
+        val result = mutableListOf<SampleListItem>()
+        val div = s.dividerPosition
+
+        if (div < 0 || div >= langItems.size) {
+            // No divider yet — put it at the very end
+            result.addAll(langItems)
+            result.add(SampleListItem.Divider)
+        } else {
+            result.addAll(langItems.take(div))
+            result.add(SampleListItem.Divider)
+            result.addAll(langItems.drop(div))
+        }
+        return result
     }
 
     override fun onDestroyView() { super.onDestroyView(); _binding = null }
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-data class LangItem(
-    val isoCode: String,
-    var sampleText: String,
-    val label: String,
-    val isoLabel: String
-)
-
 // ── Adapter ───────────────────────────────────────────────────────────────────
 
 class LangSampleAdapter(
-    private val items: MutableList<LangItem>,
-    private val onChanged: (List<LangItem>) -> Unit
-) : RecyclerView.Adapter<LangSampleAdapter.VH>() {
+    private val items: MutableList<SampleListItem>,
+    private val onChanged: (List<SampleListItem>) -> Unit
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     var touchHelper: ItemTouchHelper? = null
 
-    inner class VH(val b: ItemSampleScriptBinding) : RecyclerView.ViewHolder(b.root)
+    companion object {
+        private const val TYPE_LANG    = 0
+        private const val TYPE_DIVIDER = 1
+    }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-        VH(ItemSampleScriptBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+    inner class LangVH(val b: ItemSampleScriptBinding) : RecyclerView.ViewHolder(b.root)
+    inner class DividerVH(view: View) : RecyclerView.ViewHolder(view)
+
+    override fun getItemViewType(position: Int) =
+        if (items[position] is SampleListItem.Divider) TYPE_DIVIDER else TYPE_LANG
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return if (viewType == TYPE_DIVIDER) {
+            val v = buildDividerView(parent)
+            DividerVH(v)
+        } else {
+            LangVH(ItemSampleScriptBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+        }
+    }
+
+    private fun buildDividerView(parent: ViewGroup): View {
+        val ctx = parent.context
+        val dp  = ctx.resources.displayMetrics.density
+
+        val container = android.widget.LinearLayout(ctx)
+        container.orientation = android.widget.LinearLayout.HORIZONTAL
+        container.gravity = android.view.Gravity.CENTER_VERTICAL
+        container.layoutParams = RecyclerView.LayoutParams(
+            RecyclerView.LayoutParams.MATCH_PARENT,
+            RecyclerView.LayoutParams.WRAP_CONTENT
+        ).apply { setMargins(0, (8 * dp).toInt(), 0, (8 * dp).toInt()) }
+
+        // Left line
+        val lineLeft = View(ctx)
+        lineLeft.layoutParams = android.widget.LinearLayout.LayoutParams(0, (1.5f * dp).toInt(), 1f)
+        lineLeft.setBackgroundColor(0xFFE05252.toInt()) // red-ish warning color
+
+        // Label
+        val label = TextView(ctx)
+        label.text = "  Hidden below  "
+        label.textSize = 11f
+        label.setTextColor(0xFFE05252.toInt())
+        label.layoutParams = android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+
+        // Right line
+        val lineRight = View(ctx)
+        lineRight.layoutParams = android.widget.LinearLayout.LayoutParams(0, (1.5f * dp).toInt(), 1f)
+        lineRight.setBackgroundColor(0xFFE05252.toInt())
+
+        container.addView(lineLeft)
+        container.addView(label)
+        container.addView(lineRight)
+        return container
+    }
 
     override fun getItemCount() = items.size
 
-    override fun onBindViewHolder(holder: VH, position: Int) {
-        val item = items[position]
-        val b    = holder.b
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        if (holder is DividerVH) return  // static, nothing to bind
+
+        val item = items[position] as SampleListItem.Lang
+        val b    = (holder as LangVH).b
+
+        // Determine if this item is below the divider
+        val divPos = items.indexOfFirst { it is SampleListItem.Divider }
+        val isHidden = divPos >= 0 && position > divPos
+
+        // Visual: grayed out when hidden
+        val alpha = if (isHidden) 0.38f else 1f
+        b.root.alpha = alpha
+        b.root.isEnabled = !isHidden
 
         b.tvScriptName.text = item.label
         b.tvScriptCode.text = item.isoLabel
 
         b.etSampleText.setText(item.sampleText)
+        b.etSampleText.isEnabled = !isHidden
 
         b.etSampleText.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) {
                 val pos = holder.adapterPosition
-                if (pos != RecyclerView.NO_ID.toInt()) {
-                    items[pos] = items[pos].copy(sampleText = b.etSampleText.text?.toString() ?: "")
+                if (pos != RecyclerView.NO_ID.toInt() && items[pos] is SampleListItem.Lang) {
+                    (items[pos] as SampleListItem.Lang).sampleText =
+                        b.etSampleText.text?.toString() ?: ""
                     onChanged(items.toList())
                 }
             }
@@ -145,8 +259,8 @@ class LangSampleAdapter(
             val default = defaultLanguageSamples()[item.isoCode] ?: ""
             b.etSampleText.setText(default)
             val pos = holder.adapterPosition
-            if (pos != RecyclerView.NO_ID.toInt()) {
-                items[pos] = items[pos].copy(sampleText = default)
+            if (pos != RecyclerView.NO_ID.toInt() && items[pos] is SampleListItem.Lang) {
+                (items[pos] as SampleListItem.Lang).sampleText = default
                 onChanged(items.toList())
             }
         }
@@ -158,9 +272,14 @@ class LangSampleAdapter(
     }
 
     fun moveItem(from: Int, to: Int) {
+        if (items[from] is SampleListItem.Divider) return
         val item = items.removeAt(from)
         items.add(to, item)
+        // Rebind affected range to update hidden styling
+        val start = minOf(from, to)
+        val end   = maxOf(from, to)
         notifyItemMoved(from, to)
+        notifyItemRangeChanged(start, end - start + 1)
         onChanged(items.toList())
     }
 }
