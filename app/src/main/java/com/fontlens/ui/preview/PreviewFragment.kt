@@ -252,6 +252,11 @@ class PreviewFragment : Fragment() {
             PreviewState.bgColor   = null
             applyAll()
         }
+
+        // ── Capture ───────────────────────────────────────────────────────
+        binding.btnCapture.setOnClickListener {
+            capturePreview(font.effectiveMeta.family.ifEmpty { font.displayName })
+        }
     }
 
     // ── HSV Color Picker ──────────────────────────────────────────────────────
@@ -458,6 +463,72 @@ class PreviewFragment : Fragment() {
             .setPositiveButton("Apply") { _, _ -> onPick(currentColor()) }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    // ── Capture preview to PNG ────────────────────────────────────────────────
+
+    private fun capturePreview(fontName: String) {
+        val ctx = requireContext()
+
+        // Draw the EditText content onto a Bitmap
+        val target = binding.etPreview
+        val bmp = Bitmap.createBitmap(
+            target.width.coerceAtLeast(1),
+            target.height.coerceAtLeast(1),
+            Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(bmp)
+        canvas.drawColor(bgColor)
+        target.draw(canvas)
+
+        // Sanitize font name for filename
+        val safe = fontName.replace(Regex("[^A-Za-z0-9_\\-]"), "_").take(40)
+        val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US)
+            .format(java.util.Date())
+        val fileName = "FontLens_${safe}_$timestamp.png"
+
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                // Android 10+ — use MediaStore, no permission needed
+                val values = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                    put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    put(android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+                        android.os.Environment.DIRECTORY_PICTURES + "/FontLens")
+                    put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
+                }
+                val uri = ctx.contentResolver.insert(
+                    android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    ?: throw Exception("MediaStore insert failed")
+
+                ctx.contentResolver.openOutputStream(uri)?.use { out ->
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+
+                values.clear()
+                values.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
+                ctx.contentResolver.update(uri, values, null, null)
+            } else {
+                // Android 9 and below — write directly to Pictures/FontLens
+                val dir = java.io.File(
+                    android.os.Environment.getExternalStoragePublicDirectory(
+                        android.os.Environment.DIRECTORY_PICTURES), "FontLens")
+                dir.mkdirs()
+                val file = java.io.File(dir, fileName)
+                java.io.FileOutputStream(file).use { out ->
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+                // Notify gallery
+                android.media.MediaScannerConnection.scanFile(
+                    ctx, arrayOf(file.absolutePath), arrayOf("image/png"), null)
+            }
+
+            Toast.makeText(ctx, "Saved to Pictures/FontLens", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(ctx, "Save failed: ${e.message}", Toast.LENGTH_LONG).show()
+        } finally {
+            bmp.recycle()
+        }
     }
 
     override fun onDestroyView() { super.onDestroyView(); _binding = null }

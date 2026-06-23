@@ -104,6 +104,19 @@
             android:focusable="true"
             android:background="?attr/selectableItemBackgroundBorderless" />
 
+        <!-- Capture to PNG -->
+        <ImageView
+            android:id="@+id/btn_capture"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:padding="12dp"
+            android:src="@drawable/ic_camera"
+            app:tint="?attr/textMuted"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
         <!-- Add to Library (temp mode) -->
         <TextView
             android:id="@+id/btn_add_to_library"
