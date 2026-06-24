@@ -541,7 +541,7 @@ class PreviewFragment : Fragment() {
 
         val previewRow = android.widget.LinearLayout(ctx).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL
-            gravity     = android.view.Gravity.CENTER_VERTICAL
+            gravity     = android.view.Gravity.CENTER
             setPadding(pad, 0, pad, pad)
             addView(prevBox)
             addView(arrowBox)
