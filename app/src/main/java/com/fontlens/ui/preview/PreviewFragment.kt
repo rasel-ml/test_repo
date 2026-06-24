@@ -299,7 +299,7 @@ class PreviewFragment : Fragment() {
                     suppressSync = false
                 }
             }
-            // Must REBUILD the SV bitmap (not just invalidate) so hue change shows
+            // Only invalidate (redraw crosshair) — hue bar touch calls rebuild() directly
             svRebuildRef?.invoke()
             hueViewRef?.invalidate()
         }
@@ -319,16 +319,19 @@ class PreviewFragment : Fragment() {
                 val b  = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
                 val c  = Canvas(b)
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-                // Layer 1: white → pure hue (sat axis, left→right)
+
+                // Layer 1: white → pure hue color (saturation, left→right)
                 val hueColor = Color.HSVToColor(floatArrayOf(hue, 1f, 1f))
                 paint.shader = LinearGradient(0f, 0f, width.toFloat(), 0f,
                     Color.WHITE, hueColor, Shader.TileMode.CLAMP)
                 paint.xfermode = null
                 c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
-                // Layer 2: transparent → black (value axis, top→bottom, MULTIPLY)
+
+                // Layer 2: transparent → opaque black (value, top→bottom)
+                // Use SRC_OVER not MULTIPLY: draw semi-transparent black gradient on top
                 paint.shader = LinearGradient(0f, 0f, 0f, height.toFloat(),
                     Color.TRANSPARENT, Color.BLACK, Shader.TileMode.CLAMP)
-                paint.xfermode = android.graphics.PorterDuffXfermode(PorterDuff.Mode.MULTIPLY)
+                paint.xfermode = android.graphics.PorterDuffXfermode(PorterDuff.Mode.SRC_OVER)
                 c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
                 paint.xfermode = null; paint.shader = null
                 bmp = b; invalidate()
