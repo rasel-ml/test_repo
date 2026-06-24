@@ -304,7 +304,7 @@ class PreviewFragment : Fragment() {
             hueViewRef?.invalidate()
         }
 
-        val squareSz = (220 * dp).toInt()
+        val squareSz = (260 * dp).toInt()
         val pad    = (12 * dp).toInt()
         val hueW   = (22 * dp).toInt()
         val hueGap = (8  * dp).toInt()
