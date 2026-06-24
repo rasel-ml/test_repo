@@ -305,6 +305,10 @@ class PreviewFragment : Fragment() {
         }
 
         val squareSz = (220 * dp).toInt()
+        val pad    = (12 * dp).toInt()
+        val hueW   = (22 * dp).toInt()
+        val hueGap = (8  * dp).toInt()
+        val corner = 6f * dp
 
         // ── SV Square ─────────────────────────────────────────────────────
         val svView = object : android.view.View(ctx) {
