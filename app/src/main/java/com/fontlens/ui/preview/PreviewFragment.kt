@@ -282,10 +282,10 @@ class PreviewFragment : Fragment() {
         fun colorHex(c: Int) = String.format("#%06X", 0xFFFFFF and c)
 
         // Forward refs
-        var svViewRef:    android.view.View?          = null
-        var hueViewRef:   android.view.View?          = null
-        var currBoxRef:   android.view.View?          = null
-        var currEditRef:  android.widget.EditText?    = null
+        var svRebuildRef: (() -> Unit)?           = null
+        var hueViewRef:   android.view.View?      = null
+        var currBoxRef:   android.view.View?      = null
+        var currEditRef:  android.widget.EditText? = null
         var suppressSync  = false
 
         val updateAll: () -> Unit = {
@@ -299,47 +299,35 @@ class PreviewFragment : Fragment() {
                     suppressSync = false
                 }
             }
-            svViewRef?.invalidate()
+            // Must REBUILD the SV bitmap (not just invalidate) so hue change shows
+            svRebuildRef?.invoke()
             hueViewRef?.invalidate()
         }
 
-        val pad    = (12 * dp).toInt()
-        val hueW   = (22 * dp).toInt()
-        val hueGap = (8  * dp).toInt()
-        val corner = 6f * dp
+        val squareSz = (220 * dp).toInt()
 
-        // ── SV Square — enforces square via onMeasure ──────────────────────
+        // ── SV Square ─────────────────────────────────────────────────────
         val svView = object : android.view.View(ctx) {
             var bmp: Bitmap? = null
-
-            // Force square: height = width
-            override fun onMeasure(wSpec: Int, hSpec: Int) {
-                val w = android.view.View.MeasureSpec.getSize(wSpec)
-                setMeasuredDimension(w, w)
-            }
 
             fun rebuild() {
                 if (width < 1 || height < 1) return
                 val b  = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
                 val c  = Canvas(b)
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-
                 // Layer 1: white → pure hue (sat axis, left→right)
                 val hueColor = Color.HSVToColor(floatArrayOf(hue, 1f, 1f))
                 paint.shader = LinearGradient(0f, 0f, width.toFloat(), 0f,
                     Color.WHITE, hueColor, Shader.TileMode.CLAMP)
                 paint.xfermode = null
                 c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
-
                 // Layer 2: transparent → black (value axis, top→bottom, MULTIPLY)
                 paint.shader = LinearGradient(0f, 0f, 0f, height.toFloat(),
                     Color.TRANSPARENT, Color.BLACK, Shader.TileMode.CLAMP)
                 paint.xfermode = android.graphics.PorterDuffXfermode(PorterDuff.Mode.MULTIPLY)
                 c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
-                paint.xfermode = null
-                paint.shader   = null
-                bmp = b
-                invalidate()
+                paint.xfermode = null; paint.shader = null
+                bmp = b; invalidate()
             }
 
             override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) = rebuild()
@@ -364,8 +352,10 @@ class PreviewFragment : Fragment() {
                 }
                 return true
             }
+        }.apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(squareSz, squareSz)
         }
-        svViewRef = svView
+        svRebuildRef = svView::rebuild
 
         // ── Hue bar ───────────────────────────────────────────────────────
         val hueView = object : android.view.View(ctx) {
@@ -417,11 +407,9 @@ class PreviewFragment : Fragment() {
             gravity     = android.view.Gravity.CENTER
             setPadding(pad, pad, pad, pad)
         }
-        // SV: weight=1, height will equal measured width via onMeasure
-        svView.layoutParams = android.widget.LinearLayout.LayoutParams(
-            0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        hueView.layoutParams = android.widget.LinearLayout.LayoutParams(hueW,
-            android.widget.LinearLayout.LayoutParams.MATCH_PARENT)
+        // SV already has fixed squareSz × squareSz layout params set above
+        // Hue bar same height as square
+        hueView.layoutParams = android.widget.LinearLayout.LayoutParams(hueW, squareSz)
         val gapV = android.view.View(ctx).apply {
             layoutParams = android.widget.LinearLayout.LayoutParams(hueGap, 1)
         }
@@ -431,118 +419,98 @@ class PreviewFragment : Fragment() {
 
         // ── Color preview boxes with hex inside ────────────────────────────
         // Each box is a custom view: colored bg, grey outline, hex label in center.
-        // Current color box is also an EditText overlay for direct editing.
+        // ── Color preview boxes ────────────────────────────────────────────
+        // Both boxes wrap their hex text — no fixed minimum sizes.
+        // Previous box: static canvas draw (color + grey outline + hex label with outline)
+        // Current box: EditText with a custom background GradientDrawable updated on change
 
-        val boxPadH = (14 * dp).toInt()
-        val boxPadV = (8  * dp).toInt()
+        val boxPadH = (10 * dp).toInt()
+        val boxPadV = (6  * dp).toInt()
+        val hexTextSizeSp = 11f
 
-        // Previous color box (static)
+        // Previous box — static View, draws bg + outline + hex text
         val prevBox = object : android.view.View(ctx) {
+            val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                textSize  = hexTextSizeSp * dp
+                typeface  = android.graphics.Typeface.MONOSPACE
+                textAlign = Paint.Align.CENTER
+            }
+            override fun onMeasure(wSpec: Int, hSpec: Int) {
+                val hex   = colorHex(initial)
+                val tw    = textPaint.measureText(hex).toInt() + boxPadH * 2
+                val th    = (-textPaint.ascent() + textPaint.descent()).toInt() + boxPadV * 2
+                setMeasuredDimension(tw, th)
+            }
             override fun onDraw(canvas: Canvas) {
+                val w = width.toFloat(); val h = height.toFloat()
                 val p = Paint(Paint.ANTI_ALIAS_FLAG)
                 // Fill
                 p.color = initial; p.style = Paint.Style.FILL
-                canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), corner, corner, p)
-                // Grey outline always visible
-                p.color = Color.argb(120, 128, 128, 128)
-                p.style = Paint.Style.STROKE; p.strokeWidth = 1.5f * dp
-                canvas.drawRoundRect(RectF(0.75f * dp, 0.75f * dp,
-                    width - 0.75f * dp, height - 0.75f * dp), corner, corner, p)
-                // Hex label — white with dark outline for visibility on any color
+                canvas.drawRoundRect(RectF(0f, 0f, w, h), corner, corner, p)
+                // Grey outline
+                p.color = Color.argb(140, 128, 128, 128)
+                p.style = Paint.Style.STROKE; p.strokeWidth = 1.2f * dp
+                canvas.drawRoundRect(RectF(0.6f * dp, 0.6f * dp, w - 0.6f * dp, h - 0.6f * dp), corner, corner, p)
+                // Hex text: dark shadow then white
                 val hex = colorHex(initial)
-                p.style = Paint.Style.FILL
-                p.textSize  = 11f * dp
-                p.typeface  = android.graphics.Typeface.MONOSPACE
-                p.textAlign = Paint.Align.CENTER
-                val tx = width / 2f
-                val ty = height / 2f - (p.ascent() + p.descent()) / 2f
-                // Shadow/outline
-                p.color = Color.argb(160, 0, 0, 0)
-                for (ox in listOf(-1f * dp, 1f * dp)) for (oy in listOf(-1f * dp, 1f * dp))
-                    canvas.drawText(hex, tx + ox, ty + oy, p)
-                p.color = Color.WHITE
-                canvas.drawText(hex, tx, ty, p)
+                val tx  = w / 2f
+                val ty  = h / 2f - (textPaint.ascent() + textPaint.descent()) / 2f
+                textPaint.color = Color.argb(150, 0, 0, 0)
+                canvas.drawText(hex, tx + 1f * dp, ty + 1f * dp, textPaint)
+                textPaint.color = Color.WHITE
+                canvas.drawText(hex, tx, ty, textPaint)
             }
         }.apply {
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-            ).also { it.setMargins(0, 0, (4 * dp).toInt(), 0) }
-            minimumWidth  = (100 * dp).toInt()
-            minimumHeight = (36 * dp).toInt()
-            setPadding(boxPadH, boxPadV, boxPadH, boxPadV)
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT)
         }
 
-        // Arrow
         val arrowBox = android.widget.TextView(ctx).apply {
             text      = "→"
-            textSize  = 16f
-            setTextColor(Color.argb(180, 80, 80, 80))
+            textSize  = 14f
+            setTextColor(Color.argb(160, 80, 80, 80))
             gravity   = android.view.Gravity.CENTER
+            setPadding((6 * dp).toInt(), 0, (6 * dp).toInt(), 0)
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-            ).also { it.setMargins((4 * dp).toInt(), 0, (4 * dp).toInt(), 0) }
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT)
         }
 
-        // Current color box — drawn custom, editable hex overlaid
-        val currBox = object : android.view.View(ctx) {
+        // Current box — EditText with colored rounded-rect GradientDrawable background
+        val currBg = android.graphics.drawable.GradientDrawable().apply {
+            shape        = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = corner
+            setColor(currentColor())
+            setStroke((1.2f * dp).toInt(), Color.argb(140, 128, 128, 128))
+        }
+
+        val currEdit = object : android.widget.EditText(ctx) {
             override fun onDraw(canvas: Canvas) {
-                val p = Paint(Paint.ANTI_ALIAS_FLAG)
-                p.color = currentColor(); p.style = Paint.Style.FILL
-                canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), corner, corner, p)
-                // Grey outline
-                p.color = Color.argb(120, 128, 128, 128)
-                p.style = Paint.Style.STROKE; p.strokeWidth = 1.5f * dp
-                canvas.drawRoundRect(RectF(0.75f * dp, 0.75f * dp,
-                    width - 0.75f * dp, height - 0.75f * dp), corner, corner, p)
+                // Redraw bg with latest color before text draws
+                currBg.setColor(currentColor())
+                currBg.setBounds(0, 0, width, height)
+                currBg.draw(canvas)
+                super.onDraw(canvas)
             }
         }.apply {
-            layoutParams = android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            minimumWidth  = (100 * dp).toInt()
-            minimumHeight = (36 * dp).toInt()
-        }
-        currBoxRef = currBox
-
-        // EditText sits on top of currBox for hex editing
-        val currEdit = android.widget.EditText(ctx).apply {
             setText(colorHex(initial))
-            textSize  = 11f
+            textSize  = hexTextSizeSp
             setTypeface(android.graphics.Typeface.MONOSPACE)
             gravity   = android.view.Gravity.CENTER
             setTextColor(Color.WHITE)
-            setShadowLayer(2f * dp, 0f, 0f, Color.argb(180, 0, 0, 0))
-            background = null
+            setShadowLayer(1.5f * dp, 0.8f * dp, 0.8f * dp, Color.argb(160, 0, 0, 0))
+            background = null   // we draw it ourselves in onDraw
             maxLines   = 1
             inputType  = android.text.InputType.TYPE_CLASS_TEXT
             setPadding(boxPadH, boxPadV, boxPadH, boxPadV)
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            minWidth = (100 * dp).toInt()
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT)
         }
+        currBoxRef  = currEdit   // invalidate() will trigger onDraw → bg color update
         currEditRef = currEdit
 
-        // Overlay currBox + currEdit in a FrameLayout
-        val currFrame = android.widget.FrameLayout(ctx).apply {
-            layoutParams = android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            addView(currBox, android.widget.FrameLayout.LayoutParams(
-                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-                android.widget.FrameLayout.LayoutParams.MATCH_PARENT))
-            addView(currEdit, android.widget.FrameLayout.LayoutParams(
-                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
-                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
-                android.view.Gravity.CENTER))
-        }
-
-        // Wire EditText → HSV
         currEdit.addTextChangedListener(object : android.text.TextWatcher {
             override fun afterTextChanged(s: android.text.Editable?) {
                 if (suppressSync) return
@@ -555,7 +523,7 @@ class PreviewFragment : Fragment() {
                         suppressSync = true
                         svView.rebuild()
                         hueView.invalidate()
-                        currBox.invalidate()
+                        currEdit.invalidate()
                         suppressSync = false
                     } catch (_: Exception) {}
                 }
@@ -570,7 +538,7 @@ class PreviewFragment : Fragment() {
             setPadding(pad, 0, pad, pad)
             addView(prevBox)
             addView(arrowBox)
-            addView(currFrame)
+            addView(currEdit)
         }
 
         // ── Container ─────────────────────────────────────────────────────
