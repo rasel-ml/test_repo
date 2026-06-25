@@ -282,14 +282,16 @@ class PreviewFragment : Fragment() {
         fun colorHex(c: Int) = String.format("#%06X", 0xFFFFFF and c)
 
         // Forward refs
-        var svRebuildRef: (() -> Unit)?           = null
-        var hueViewRef:   android.view.View?      = null
-        var currBoxRef:   android.view.View?      = null
+        var svRebuildRef: (() -> Unit)?            = null
+        var hueViewRef:   android.view.View?       = null
+        var currBoxRef:   android.view.View?       = null
         var currEditRef:  android.widget.EditText? = null
+        var currBgRef:    android.graphics.drawable.GradientDrawable? = null
         var suppressSync  = false
 
         val updateAll: () -> Unit = {
             val color = currentColor()
+            currBgRef?.setColor(color)
             currBoxRef?.invalidate()
             if (!suppressSync) {
                 currEditRef?.let {
@@ -299,12 +301,11 @@ class PreviewFragment : Fragment() {
                     suppressSync = false
                 }
             }
-            // Only invalidate (redraw crosshair) — hue bar touch calls rebuild() directly
             svRebuildRef?.invoke()
             hueViewRef?.invalidate()
         }
 
-        val squareSz = (260 * dp).toInt()
+        val squareSz = (220 * dp).toInt()
         val pad    = (12 * dp).toInt()
         val hueW   = (22 * dp).toInt()
         val hueGap = (8  * dp).toInt()
@@ -491,23 +492,16 @@ class PreviewFragment : Fragment() {
             setColor(currentColor())
             setStroke((1.2f * dp).toInt(), Color.argb(140, 128, 128, 128))
         }
+        currBgRef = currBg
 
-        val currEdit = object : android.widget.EditText(ctx) {
-            override fun onDraw(canvas: Canvas) {
-                // Redraw bg with latest color before text draws
-                currBg.setColor(currentColor())
-                currBg.setBounds(0, 0, width, height)
-                currBg.draw(canvas)
-                super.onDraw(canvas)
-            }
-        }.apply {
+        val currEdit = android.widget.EditText(ctx).apply {
             setText(colorHex(initial))
             textSize  = hexTextSizeSp
             setTypeface(android.graphics.Typeface.MONOSPACE)
             gravity   = android.view.Gravity.CENTER
             setTextColor(Color.WHITE)
             setShadowLayer(1.5f * dp, 0.8f * dp, 0.8f * dp, Color.argb(160, 0, 0, 0))
-            background = null   // we draw it ourselves in onDraw
+            background = currBg   // GradientDrawable as background — updated via setColor()
             maxLines   = 1
             inputType  = android.text.InputType.TYPE_CLASS_TEXT
             setPadding(boxPadH, boxPadV, boxPadH, boxPadV)
@@ -515,7 +509,7 @@ class PreviewFragment : Fragment() {
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT)
         }
-        currBoxRef  = currEdit   // invalidate() will trigger onDraw → bg color update
+        currBoxRef  = currEdit
         currEditRef = currEdit
 
         currEdit.addTextChangedListener(object : android.text.TextWatcher {
@@ -528,6 +522,7 @@ class PreviewFragment : Fragment() {
                         val h = FloatArray(3); Color.colorToHSV(parsed, h)
                         hue = h[0]; sat = h[1]; value = h[2]
                         suppressSync = true
+                        currBgRef?.setColor(currentColor())
                         svView.rebuild()
                         hueView.invalidate()
                         currEdit.invalidate()
