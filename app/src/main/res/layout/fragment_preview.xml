@@ -291,7 +291,7 @@
             android:paddingEnd="16dp"
             android:paddingTop="6dp"
             android:paddingBottom="12dp"
-            android:weightSum="4">
+            android:weightSum="6">
 
             <!-- Bold -->
             <TextView
@@ -326,6 +326,21 @@
                 android:clickable="true"
                 android:focusable="true" />
 
+            <!-- Align -->
+            <ImageView
+                android:id="@+id/btn_align"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:padding="10dp"
+                android:src="@drawable/ic_format_align"
+                app:tint="?attr/textMuted"
+                android:background="@drawable/bg_style_btn"
+                android:clickable="true"
+                android:focusable="true"
+                android:scaleType="fitCenter" />
+
             <!-- Font color -->
             <FrameLayout
                 android:id="@+id/btn_font_color"
@@ -346,7 +361,6 @@
                     android:textStyle="bold"
                     android:textColor="?attr/textPrimary" />
 
-                <!-- Color indicator strip at bottom -->
                 <View
                     android:id="@+id/font_color_indicator"
                     android:layout_width="match_parent"
@@ -362,6 +376,7 @@
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"
+                android:layout_marginEnd="6dp"
                 android:background="@drawable/bg_style_btn"
                 android:clickable="true"
                 android:focusable="true">
@@ -375,7 +390,6 @@
                     android:textStyle="bold"
                     android:textColor="?attr/textPrimary" />
 
-                <!-- BG color indicator strip at bottom -->
                 <View
                     android:id="@+id/bg_color_indicator"
                     android:layout_width="match_parent"
@@ -384,6 +398,20 @@
                     android:background="?attr/bgPrimary" />
 
             </FrameLayout>
+
+            <!-- Background image -->
+            <ImageView
+                android:id="@+id/btn_bg_image"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:padding="10dp"
+                android:src="@drawable/ic_image"
+                app:tint="?attr/textMuted"
+                android:background="@drawable/bg_style_btn"
+                android:clickable="true"
+                android:focusable="true"
+                android:scaleType="fitCenter" />
 
         </LinearLayout>
 

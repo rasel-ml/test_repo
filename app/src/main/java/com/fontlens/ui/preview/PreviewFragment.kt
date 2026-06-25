@@ -11,12 +11,18 @@ import android.graphics.PorterDuff
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
+import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.PopupWindow
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -33,11 +39,13 @@ import kotlinx.coroutines.launch
 // ── Persistent preview state (survives navigation, cleared on app restart) ────
 
 object PreviewState {
-    var isBold:    Boolean = false
-    var isItalic:  Boolean = false
-    var fontSize:  Int     = 32
-    var fontColor: Int?    = null   // null = use theme default
-    var bgColor:   Int?    = null   // null = use theme default
+    var isBold:     Boolean  = false
+    var isItalic:   Boolean  = false
+    var fontSize:   Int      = 32
+    var fontColor:  Int?     = null
+    var bgColor:    Int?     = null
+    var textAlign:  Int      = android.view.Gravity.START
+    var bgImageUri: android.net.Uri? = null
 }
 
 // ── Fragment ──────────────────────────────────────────────────────────────────
@@ -51,14 +59,37 @@ class PreviewFragment : Fragment() {
     private lateinit var storageDeleteHelper: StorageDeleteHelper
     private var pendingDeleteFontId: String? = null
 
-    // Local working copies — written back to PreviewState on every change
-    private var isBold    get() = PreviewState.isBold;    set(v) { PreviewState.isBold    = v }
-    private var isItalic  get() = PreviewState.isItalic;  set(v) { PreviewState.isItalic  = v }
-    private var fontSize  get() = PreviewState.fontSize;  set(v) { PreviewState.fontSize  = v }
-    private var fontColor get() = PreviewState.fontColor  ?: ThemeManager.activePalette.textPrimary
-                          set(v) { PreviewState.fontColor = v }
-    private var bgColor   get() = PreviewState.bgColor    ?: ThemeManager.activePalette.bgPrimary
-                          set(v) { PreviewState.bgColor   = v }
+    // Image picker
+    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) {
+            PreviewState.bgImageUri = uri
+            applyBgImage(uri)
+        }
+    }
+
+    private var isBold      get() = PreviewState.isBold;      set(v) { PreviewState.isBold      = v }
+    private var isItalic    get() = PreviewState.isItalic;    set(v) { PreviewState.isItalic    = v }
+    private var fontSize    get() = PreviewState.fontSize;    set(v) { PreviewState.fontSize    = v }
+    private var fontColor   get() = PreviewState.fontColor    ?: ThemeManager.activePalette.textPrimary
+                            set(v) { PreviewState.fontColor   = v }
+    private var bgColor     get() = PreviewState.bgColor      ?: ThemeManager.activePalette.bgPrimary
+                            set(v) { PreviewState.bgColor     = v }
+    private var textAlign   get() = PreviewState.textAlign;   set(v) { PreviewState.textAlign   = v }
+
+    private fun applyBgImage(uri: Uri) {
+        try {
+            val stream  = requireContext().contentResolver.openInputStream(uri) ?: return
+            val bmp     = android.graphics.BitmapFactory.decodeStream(stream)
+            stream.close()
+            val drawable = BitmapDrawable(resources, bmp)
+            drawable.alpha = 220
+            binding.scrollPreview.background = drawable
+            binding.etPreview.background     = null
+            binding.etPreview.setBackgroundColor(Color.TRANSPARENT)
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Could not load image", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentPreviewBinding.inflate(inflater, container, false)
@@ -191,6 +222,10 @@ class PreviewFragment : Fragment() {
                 if (isBold) R.drawable.bg_style_btn_active else R.drawable.bg_style_btn)
             binding.btnItalic.setBackgroundResource(
                 if (isItalic) R.drawable.bg_style_btn_active else R.drawable.bg_style_btn)
+            // Align
+            binding.etPreview.gravity = textAlign or Gravity.TOP
+            // Bg image
+            PreviewState.bgImageUri?.let { applyBgImage(it) }
             applyTypeface()
         }
         applyAll()
@@ -245,17 +280,74 @@ class PreviewFragment : Fragment() {
 
         // ── Reset ─────────────────────────────────────────────────────────
         binding.btnReset.setOnClickListener {
-            PreviewState.isBold    = false
-            PreviewState.isItalic  = false
-            PreviewState.fontSize  = 32
-            PreviewState.fontColor = null
-            PreviewState.bgColor   = null
+            PreviewState.isBold     = false
+            PreviewState.isItalic   = false
+            PreviewState.fontSize   = 32
+            PreviewState.fontColor  = null
+            PreviewState.bgColor    = null
+            PreviewState.textAlign  = Gravity.START
+            PreviewState.bgImageUri = null
+            binding.scrollPreview.background = null
             applyAll()
         }
 
         // ── Capture ───────────────────────────────────────────────────────
         binding.btnCapture.setOnClickListener {
             capturePreview(font.effectiveMeta.family.ifEmpty { font.displayName })
+        }
+
+        // ── Align popup ───────────────────────────────────────────────────
+        binding.btnAlign.setOnClickListener { anchor ->
+            val dp = resources.displayMetrics.density
+            val popupView = android.widget.LinearLayout(requireContext()).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                setBackgroundResource(R.drawable.bg_style_btn)
+                setPadding((6 * dp).toInt(), (6 * dp).toInt(), (6 * dp).toInt(), (6 * dp).toInt())
+                elevation = 8f * dp
+            }
+
+            val alignOptions = listOf(
+                R.drawable.ic_align_left    to Gravity.START,
+                R.drawable.ic_align_center  to Gravity.CENTER_HORIZONTAL,
+                R.drawable.ic_align_right   to Gravity.END,
+                R.drawable.ic_align_justify to Gravity.FILL_HORIZONTAL
+            )
+
+            val popup = PopupWindow(popupView,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT, true)
+            popup.elevation = 8f * dp
+
+            alignOptions.forEach { (iconRes, gravity) ->
+                val btn = ImageView(requireContext()).apply {
+                    setImageResource(iconRes)
+                    val isActive = textAlign == gravity
+                    val size = (40 * dp).toInt()
+                    layoutParams = android.widget.LinearLayout.LayoutParams(size, size).apply {
+                        setMargins((4 * dp).toInt(), 0, (4 * dp).toInt(), 0)
+                    }
+                    setBackgroundResource(
+                        if (isActive) R.drawable.bg_style_btn_active else R.drawable.bg_style_btn)
+                    imageTintList = android.content.res.ColorStateList.valueOf(
+                        if (isActive) p.accent else p.textMuted)
+                    setPadding((8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt())
+                    setOnClickListener {
+                        textAlign = gravity
+                        binding.etPreview.gravity = gravity or Gravity.TOP
+                        binding.btnAlign.imageTintList =
+                            android.content.res.ColorStateList.valueOf(p.accent)
+                        popup.dismiss()
+                    }
+                }
+                popupView.addView(btn)
+            }
+
+            popup.showAsDropDown(anchor, 0, -(anchor.height + (48 * dp).toInt()))
+        }
+
+        // ── Background image picker ────────────────────────────────────────
+        binding.btnBgImage.setOnClickListener {
+            pickImage.launch("image/*")
         }
     }
 
