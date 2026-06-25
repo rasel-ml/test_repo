@@ -434,12 +434,13 @@ class PreviewFragment : Fragment() {
 
         val boxPadH = (10 * dp).toInt()
         val boxPadV = (6  * dp).toInt()
-        val hexTextSizeSp = 11f
+        val hexTextSizeSp = 12f   // same sp value for both boxes
+        val hexTextSizePx = hexTextSizeSp * dp  // px for canvas Paint
 
         // Previous box — static View, draws bg + outline + hex text
         val prevBox = object : android.view.View(ctx) {
             val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize  = hexTextSizeSp * dp
+                textSize  = hexTextSizePx
                 typeface  = android.graphics.Typeface.MONOSPACE
                 textAlign = Paint.Align.CENTER
             }
@@ -501,9 +502,12 @@ class PreviewFragment : Fragment() {
             gravity   = android.view.Gravity.CENTER
             setTextColor(Color.WHITE)
             setShadowLayer(1.5f * dp, 0.8f * dp, 0.8f * dp, Color.argb(160, 0, 0, 0))
-            background = currBg   // GradientDrawable as background — updated via setColor()
+            background = currBg
             maxLines   = 1
-            inputType  = android.text.InputType.TYPE_CLASS_TEXT
+            // Limit to exactly 7 chars: # + 6 hex digits
+            inputType  = android.text.InputType.TYPE_CLASS_TEXT or
+                         android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            filters    = arrayOf(android.text.InputFilter.LengthFilter(7))
             setPadding(boxPadH, boxPadV, boxPadH, boxPadV)
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -537,7 +541,7 @@ class PreviewFragment : Fragment() {
         val previewRow = android.widget.LinearLayout(ctx).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL
             gravity     = android.view.Gravity.CENTER
-            setPadding(pad, 0, pad, pad)
+            setPadding(pad, pad, pad, pad)
             addView(prevBox)
             addView(arrowBox)
             addView(currEdit)
