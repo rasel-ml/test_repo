@@ -11,7 +11,6 @@ import android.graphics.PorterDuff
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
-import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
@@ -78,14 +77,11 @@ class PreviewFragment : Fragment() {
 
     private fun applyBgImage(uri: Uri) {
         try {
-            val stream  = requireContext().contentResolver.openInputStream(uri) ?: return
-            val bmp     = android.graphics.BitmapFactory.decodeStream(stream)
-            stream.close()
-            val drawable = BitmapDrawable(resources, bmp)
-            drawable.alpha = 220
-            binding.scrollPreview.background = drawable
-            binding.etPreview.background     = null
+            binding.ivBgImage.setImageURI(uri)
+            binding.ivBgImage.visibility = View.VISIBLE
+            // Make EditText and ScrollView bg transparent so image shows through
             binding.etPreview.setBackgroundColor(Color.TRANSPARENT)
+            binding.scrollPreview.setBackgroundColor(Color.TRANSPARENT)
         } catch (e: Exception) {
             Toast.makeText(requireContext(), "Could not load image", Toast.LENGTH_SHORT).show()
         }
@@ -209,10 +205,16 @@ class PreviewFragment : Fragment() {
             binding.tvSizeLabel.text   = "${fontSize}px"
             binding.etPreview.textSize = fontSize.toFloat()
             binding.seekbarSize.progress = (fontSize - 8).coerceIn(0, 152)
-            // Colors
+            // Colors — only apply bg color if no image is set
             binding.etPreview.setTextColor(fontColor)
-            binding.etPreview.setBackgroundColor(bgColor)
-            binding.scrollPreview.setBackgroundColor(bgColor)
+            if (PreviewState.bgImageUri == null) {
+                binding.etPreview.setBackgroundColor(bgColor)
+                binding.scrollPreview.setBackgroundColor(bgColor)
+                binding.ivBgImage.visibility = View.GONE
+            } else {
+                binding.etPreview.setBackgroundColor(Color.TRANSPARENT)
+                binding.scrollPreview.setBackgroundColor(Color.TRANSPARENT)
+            }
             binding.fontColorIndicator.setBackgroundColor(fontColor)
             binding.bgColorIndicator.setBackgroundColor(bgColor)
             // Bold / Italic
@@ -265,15 +267,17 @@ class PreviewFragment : Fragment() {
             showHsvColorPicker("Font Color", fontColor) { picked ->
                 fontColor = picked
                 binding.etPreview.setTextColor(fontColor)
-                binding.scrollPreview.setBackgroundColor(bgColor)
                 binding.fontColorIndicator.setBackgroundColor(fontColor)
             }
         }
         binding.btnBgColor.setOnClickListener {
             showHsvColorPicker("Background Color", bgColor) { picked ->
                 bgColor = picked
-                binding.etPreview.setBackgroundColor(bgColor)
-                binding.scrollPreview.setBackgroundColor(bgColor)
+                // Only apply bg color if no image is active
+                if (PreviewState.bgImageUri == null) {
+                    binding.etPreview.setBackgroundColor(bgColor)
+                    binding.scrollPreview.setBackgroundColor(bgColor)
+                }
                 binding.bgColorIndicator.setBackgroundColor(bgColor)
             }
         }
@@ -287,7 +291,8 @@ class PreviewFragment : Fragment() {
             PreviewState.bgColor    = null
             PreviewState.textAlign  = Gravity.START
             PreviewState.bgImageUri = null
-            binding.scrollPreview.background = null
+            binding.ivBgImage.setImageDrawable(null)
+            binding.ivBgImage.visibility = View.GONE
             applyAll()
         }
 
@@ -660,16 +665,35 @@ class PreviewFragment : Fragment() {
     private fun capturePreview(fontName: String) {
         val ctx = requireContext()
 
-        // Draw the EditText content onto a Bitmap
-        val target = binding.etPreview
-        val bmp = Bitmap.createBitmap(
-            target.width.coerceAtLeast(1),
-            target.height.coerceAtLeast(1),
-            Bitmap.Config.ARGB_8888
-        )
+        // Capture the full preview area (bg image + text)
+        val container = binding.scrollPreview
+        val w = container.width.coerceAtLeast(1)
+        val h = container.height.coerceAtLeast(1)
+
+        val bmp    = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
-        canvas.drawColor(bgColor)
-        target.draw(canvas)
+
+        // Draw background — image or solid color
+        if (PreviewState.bgImageUri != null && binding.ivBgImage.visibility == View.VISIBLE) {
+            // Draw the bg image scaled to fill (same as centerCrop)
+            val imgDrawable = binding.ivBgImage.drawable
+            if (imgDrawable != null) {
+                val imgW = imgDrawable.intrinsicWidth.toFloat()
+                val imgH = imgDrawable.intrinsicHeight.toFloat()
+                val scale = maxOf(w / imgW, h / imgH)
+                val drawW = (imgW * scale).toInt()
+                val drawH = (imgH * scale).toInt()
+                val left  = (w - drawW) / 2
+                val top   = (h - drawH) / 2
+                imgDrawable.setBounds(left, top, left + drawW, top + drawH)
+                imgDrawable.draw(canvas)
+            }
+        } else {
+            canvas.drawColor(bgColor)
+        }
+
+        // Draw the EditText content on top
+        binding.etPreview.draw(canvas)
 
         // Sanitize font name for filename
         val safe = fontName.replace(Regex("[^A-Za-z0-9_\\-]"), "_").take(40)
