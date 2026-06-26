@@ -62,6 +62,7 @@ class PreviewFragment : Fragment() {
     private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
             PreviewState.bgImageUri = uri
+            PreviewState.bgColor    = null   // image takes over, clear color
             applyBgImage(uri)
         }
     }
@@ -77,60 +78,59 @@ class PreviewFragment : Fragment() {
 
     private fun applyBgImage(uri: Uri) {
         val iv = binding.ivBgImage
+        // Make visible first so it gets measured
+        iv.visibility = View.VISIBLE
+        binding.etPreview.setBackgroundColor(Color.TRANSPARENT)
+        binding.scrollPreview.setBackgroundColor(Color.TRANSPARENT)
+
+        // Use scrollPreview dimensions (always laid out, same size as iv)
+        val ref = binding.scrollPreview
         fun load() {
+            val w = ref.width.takeIf  { it > 0 } ?: return
+            val h = ref.height.takeIf { it > 0 } ?: return
             try {
                 val ctx = requireContext()
-                val w = iv.width.takeIf { it > 0 } ?: return
-                val h = iv.height.takeIf { it > 0 } ?: return
-
-                // Decode with inJustDecodeBounds first to get source size
-                val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                // Step 1: sample size
+                val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 ctx.contentResolver.openInputStream(uri)?.use {
-                    android.graphics.BitmapFactory.decodeStream(it, null, opts)
+                    android.graphics.BitmapFactory.decodeStream(it, null, bounds)
                 }
+                var sample = 1
+                var sw = bounds.outWidth; var sh = bounds.outHeight
+                while (sw / 2 >= w && sh / 2 >= h) { sample *= 2; sw /= 2; sh /= 2 }
 
-                // Sample down to avoid OOM while keeping enough resolution
-                var sampleSize = 1
-                var sw = opts.outWidth; var sh = opts.outHeight
-                while (sw / 2 >= w && sh / 2 >= h) { sampleSize *= 2; sw /= 2; sh /= 2 }
-
-                val bmpOpts = android.graphics.BitmapFactory.Options().apply {
-                    inSampleSize = sampleSize
-                }
+                // Step 2: decode
                 val bmp = ctx.contentResolver.openInputStream(uri)?.use {
-                    android.graphics.BitmapFactory.decodeStream(it, null, bmpOpts)
+                    android.graphics.BitmapFactory.decodeStream(it, null,
+                        android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
                 } ?: return
 
-                // Scale exactly to fill (centerCrop) at the view's pixel size
-                val scale = maxOf(w.toFloat() / bmp.width, h.toFloat() / bmp.height)
+                // Step 3: centerCrop to exact w×h
+                val scale  = maxOf(w.toFloat() / bmp.width, h.toFloat() / bmp.height)
                 val scaledW = (bmp.width  * scale).toInt()
                 val scaledH = (bmp.height * scale).toInt()
                 val scaled  = Bitmap.createScaledBitmap(bmp, scaledW, scaledH, true)
-                bmp.recycle()
+                if (scaled !== bmp) bmp.recycle()
+                val x = ((scaledW - w) / 2).coerceAtLeast(0)
+                val y = ((scaledH - h) / 2).coerceAtLeast(0)
+                val cropped = Bitmap.createBitmap(scaled, x, y,
+                    minOf(w, scaled.width), minOf(h, scaled.height))
+                if (cropped !== scaled) scaled.recycle()
 
-                // Crop center
-                val x = (scaledW - w) / 2
-                val y = (scaledH - h) / 2
-                val cropped = Bitmap.createBitmap(scaled, x, y, w, h)
-                if (scaled !== cropped) scaled.recycle()
-
+                // Step 4: set as fixed bitmap — scaleType FIT_XY since it's already exact size
+                iv.scaleType = android.widget.ImageView.ScaleType.FIT_XY
                 iv.setImageBitmap(cropped)
-                iv.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-                iv.visibility = View.VISIBLE
-                binding.etPreview.setBackgroundColor(Color.TRANSPARENT)
-                binding.scrollPreview.setBackgroundColor(Color.TRANSPARENT)
             } catch (e: Exception) {
                 Toast.makeText(requireContext(), "Could not load image", Toast.LENGTH_SHORT).show()
             }
         }
 
-        if (iv.width > 0 && iv.height > 0) {
+        if (ref.width > 0) {
             load()
         } else {
-            // Wait until the ImageView is laid out before we know its size
-            iv.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+            ref.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
                 override fun onGlobalLayout() {
-                    iv.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                    ref.viewTreeObserver.removeOnGlobalLayoutListener(this)
                     load()
                 }
             })
@@ -323,11 +323,12 @@ class PreviewFragment : Fragment() {
         binding.btnBgColor.setOnClickListener {
             showHsvColorPicker("Background Color", bgColor) { picked ->
                 bgColor = picked
-                // Only apply bg color if no image is active
-                if (PreviewState.bgImageUri == null) {
-                    binding.etPreview.setBackgroundColor(bgColor)
-                    binding.scrollPreview.setBackgroundColor(bgColor)
-                }
+                // Color replaces image
+                PreviewState.bgImageUri = null
+                binding.ivBgImage.setImageDrawable(null)
+                binding.ivBgImage.visibility = View.GONE
+                binding.etPreview.setBackgroundColor(bgColor)
+                binding.scrollPreview.setBackgroundColor(bgColor)
                 binding.bgColorIndicator.setBackgroundColor(bgColor)
             }
         }
