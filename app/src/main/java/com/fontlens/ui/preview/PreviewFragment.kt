@@ -76,14 +76,64 @@ class PreviewFragment : Fragment() {
     private var textAlign   get() = PreviewState.textAlign;   set(v) { PreviewState.textAlign   = v }
 
     private fun applyBgImage(uri: Uri) {
-        try {
-            binding.ivBgImage.setImageURI(uri)
-            binding.ivBgImage.visibility = View.VISIBLE
-            // Make EditText and ScrollView bg transparent so image shows through
-            binding.etPreview.setBackgroundColor(Color.TRANSPARENT)
-            binding.scrollPreview.setBackgroundColor(Color.TRANSPARENT)
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Could not load image", Toast.LENGTH_SHORT).show()
+        val iv = binding.ivBgImage
+        fun load() {
+            try {
+                val ctx = requireContext()
+                val w = iv.width.takeIf { it > 0 } ?: return
+                val h = iv.height.takeIf { it > 0 } ?: return
+
+                // Decode with inJustDecodeBounds first to get source size
+                val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                ctx.contentResolver.openInputStream(uri)?.use {
+                    android.graphics.BitmapFactory.decodeStream(it, null, opts)
+                }
+
+                // Sample down to avoid OOM while keeping enough resolution
+                var sampleSize = 1
+                var sw = opts.outWidth; var sh = opts.outHeight
+                while (sw / 2 >= w && sh / 2 >= h) { sampleSize *= 2; sw /= 2; sh /= 2 }
+
+                val bmpOpts = android.graphics.BitmapFactory.Options().apply {
+                    inSampleSize = sampleSize
+                }
+                val bmp = ctx.contentResolver.openInputStream(uri)?.use {
+                    android.graphics.BitmapFactory.decodeStream(it, null, bmpOpts)
+                } ?: return
+
+                // Scale exactly to fill (centerCrop) at the view's pixel size
+                val scale = maxOf(w.toFloat() / bmp.width, h.toFloat() / bmp.height)
+                val scaledW = (bmp.width  * scale).toInt()
+                val scaledH = (bmp.height * scale).toInt()
+                val scaled  = Bitmap.createScaledBitmap(bmp, scaledW, scaledH, true)
+                bmp.recycle()
+
+                // Crop center
+                val x = (scaledW - w) / 2
+                val y = (scaledH - h) / 2
+                val cropped = Bitmap.createBitmap(scaled, x, y, w, h)
+                if (scaled !== cropped) scaled.recycle()
+
+                iv.setImageBitmap(cropped)
+                iv.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+                iv.visibility = View.VISIBLE
+                binding.etPreview.setBackgroundColor(Color.TRANSPARENT)
+                binding.scrollPreview.setBackgroundColor(Color.TRANSPARENT)
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Could not load image", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        if (iv.width > 0 && iv.height > 0) {
+            load()
+        } else {
+            // Wait until the ImageView is laid out before we know its size
+            iv.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+                override fun onGlobalLayout() {
+                    iv.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                    load()
+                }
+            })
         }
     }
 
