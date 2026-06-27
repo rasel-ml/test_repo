@@ -226,6 +226,21 @@ class PreviewFragment : Fragment() {
                 Bundle().apply { putString("fontId", font.id) })
         }
 
+        // ── Long press tooltips ───────────────────────────────────────────
+        binding.btnInfo.setOnLongClickListener     { showTooltip(it, getString(R.string.tooltip_font_info));     true }
+        binding.btnMeta.setOnLongClickListener     { showTooltip(it, getString(R.string.tooltip_font_metadata)); true }
+        binding.btnGlyph.setOnLongClickListener    { showTooltip(it, getString(R.string.tooltip_glyph_map));     true }
+        binding.btnDelete.setOnLongClickListener   { showTooltip(it, getString(R.string.tooltip_delete));        true }
+        binding.btnFavorite.setOnLongClickListener { showTooltip(it, getString(R.string.tooltip_favorite));      true }
+        binding.btnReset.setOnLongClickListener    { showTooltip(it, getString(R.string.tooltip_reset));         true }
+        binding.btnBold.setOnLongClickListener     { showTooltip(it, getString(R.string.tooltip_bold));          true }
+        binding.btnItalic.setOnLongClickListener   { showTooltip(it, getString(R.string.tooltip_italic));        true }
+        binding.btnAlign.setOnLongClickListener    { showTooltip(it, getString(R.string.tooltip_alignment));     true }
+        binding.btnFontColor.setOnLongClickListener{ showTooltip(it, getString(R.string.tooltip_text_color));    true }
+        binding.btnBgColor.setOnLongClickListener  { showTooltip(it, getString(R.string.tooltip_bg_color));      true }
+        binding.btnBgImage.setOnLongClickListener  { showTooltip(it, getString(R.string.tooltip_bg_image));      true }
+        binding.btnCapture.setOnLongClickListener  { showTooltip(it, getString(R.string.tooltip_capture));       true }
+
         // ── Preview text ──────────────────────────────────────────────────
         binding.etPreview.setText(
             args.initialSampleText.ifEmpty { FontRepository.getSampleText(font) }
@@ -276,6 +291,7 @@ class PreviewFragment : Fragment() {
                 if (isItalic) R.drawable.bg_style_btn_active else R.drawable.bg_style_btn)
             // Align
             binding.etPreview.gravity = textAlign or Gravity.TOP
+            updateAlignIcon()
             // Bg image
             PreviewState.bgImageUri?.let { applyBgImage(it) }
             applyTypeface()
@@ -353,6 +369,19 @@ class PreviewFragment : Fragment() {
         }
 
         // ── Align popup ───────────────────────────────────────────────────
+        fun updateAlignIcon() {
+            val iconRes = when (textAlign) {
+                Gravity.CENTER_HORIZONTAL -> R.drawable.ic_align_center
+                Gravity.END               -> R.drawable.ic_align_right
+                Gravity.FILL_HORIZONTAL   -> R.drawable.ic_align_justify
+                else                      -> R.drawable.ic_align_left
+            }
+            binding.btnAlign.setImageResource(iconRes)
+            val isNonDefault = textAlign != Gravity.START
+            binding.btnAlign.imageTintList = android.content.res.ColorStateList.valueOf(
+                if (isNonDefault) p.accent else p.textMuted)
+        }
+        updateAlignIcon()
         binding.btnAlign.setOnClickListener { anchor ->
             val dp = resources.displayMetrics.density
             val popupView = android.widget.LinearLayout(requireContext()).apply {
@@ -390,8 +419,7 @@ class PreviewFragment : Fragment() {
                     setOnClickListener {
                         textAlign = gravity
                         binding.etPreview.gravity = gravity or Gravity.TOP
-                        binding.btnAlign.imageTintList =
-                            android.content.res.ColorStateList.valueOf(p.accent)
+                        updateAlignIcon()
                         popup.dismiss()
                     }
                 }
@@ -710,6 +738,42 @@ class PreviewFragment : Fragment() {
             .show()
     }
 
+
+    // ── Tooltip helper ────────────────────────────────────────────────────────
+
+    private fun showTooltip(anchor: View, text: String) {
+        val ctx = requireContext()
+        val dp  = ctx.resources.displayMetrics.density
+
+        val tv = android.widget.TextView(ctx).apply {
+            this.text = text
+            textSize  = 12f
+            setTextColor(android.graphics.Color.WHITE)
+            setPadding((10 * dp).toInt(), (5 * dp).toInt(), (10 * dp).toInt(), (5 * dp).toInt())
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(android.graphics.Color.argb(220, 30, 30, 30))
+                cornerRadius = 4f * dp
+            }
+        }
+
+        val popup = android.widget.PopupWindow(tv,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT)
+        popup.isOutsideTouchable = true
+        popup.isFocusable        = false
+        popup.elevation          = 8f * dp
+
+        // Show above the anchor, centered
+        anchor.post {
+            val loc = IntArray(2); anchor.getLocationOnScreen(loc)
+            tv.measure(android.view.View.MeasureSpec.UNSPECIFIED, android.view.View.MeasureSpec.UNSPECIFIED)
+            val xOff = (anchor.width - tv.measuredWidth) / 2
+            popup.showAsDropDown(anchor, xOff, -(anchor.height + tv.measuredHeight + (4 * dp).toInt()))
+        }
+
+        // Auto-dismiss after 1.5s
+        anchor.postDelayed({ popup.dismiss() }, 1500)
+    }
 
     // ── Capture preview to PNG ────────────────────────────────────────────────
 
