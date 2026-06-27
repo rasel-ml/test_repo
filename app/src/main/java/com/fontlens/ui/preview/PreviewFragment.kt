@@ -265,6 +265,19 @@ class PreviewFragment : Fragment() {
         }
 
         // ── Apply all persistent state ────────────────────────────────────
+        fun updateAlignIcon() {
+            val iconRes = when (textAlign) {
+                Gravity.CENTER_HORIZONTAL -> R.drawable.ic_align_center
+                Gravity.END               -> R.drawable.ic_align_right
+                Gravity.FILL_HORIZONTAL   -> R.drawable.ic_align_justify
+                else                      -> R.drawable.ic_align_left
+            }
+            binding.btnAlign.setImageResource(iconRes)
+            val isNonDefault = textAlign != Gravity.START
+            binding.btnAlign.imageTintList = android.content.res.ColorStateList.valueOf(
+                if (isNonDefault) p.accent else p.textMuted)
+        }
+
         fun applyAll() {
             // Size
             binding.tvSizeLabel.text   = "${fontSize}px"
@@ -369,18 +382,6 @@ class PreviewFragment : Fragment() {
         }
 
         // ── Align popup ───────────────────────────────────────────────────
-        fun updateAlignIcon() {
-            val iconRes = when (textAlign) {
-                Gravity.CENTER_HORIZONTAL -> R.drawable.ic_align_center
-                Gravity.END               -> R.drawable.ic_align_right
-                Gravity.FILL_HORIZONTAL   -> R.drawable.ic_align_justify
-                else                      -> R.drawable.ic_align_left
-            }
-            binding.btnAlign.setImageResource(iconRes)
-            val isNonDefault = textAlign != Gravity.START
-            binding.btnAlign.imageTintList = android.content.res.ColorStateList.valueOf(
-                if (isNonDefault) p.accent else p.textMuted)
-        }
         updateAlignIcon()
         binding.btnAlign.setOnClickListener { anchor ->
             val dp = resources.displayMetrics.density
