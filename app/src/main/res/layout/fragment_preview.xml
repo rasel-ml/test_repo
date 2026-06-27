@@ -31,6 +31,21 @@
             android:ellipsize="end"
             android:letterSpacing="0.04" />
 
+        <!-- Add to Library button — top right of toolbar, temp mode only -->
+        <ImageView
+            android:id="@+id/btn_add_to_library"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="end"
+            android:padding="8dp"
+            android:src="@drawable/ic_add_circle"
+            app:tint="?attr/colorPrimary"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/tooltip_add_library" />
+
     </androidx.appcompat.widget.Toolbar>
 
     <!-- ── Menu bar: info · meta · glyph · add · delete · favorite ── -->
@@ -117,24 +132,7 @@
             android:focusable="true"
             android:background="?attr/selectableItemBackgroundBorderless" />
 
-        <!-- Add to Library (temp mode) -->
-        <TextView
-            android:id="@+id/btn_add_to_library"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="+ Add"
-            android:textSize="12sp"
-            android:textColor="?attr/colorOnPrimary"
-            android:background="@drawable/bg_accent_btn"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="4dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:visibility="gone" />
+        <!-- Add to Library (temp mode) - MOVED TO TOOLBAR -->
 
         <!-- Delete -->
         <ImageView
@@ -147,7 +145,6 @@
             app:tint="?attr/textMuted"
             android:clickable="true"
             android:focusable="true"
-            android:visibility="gone"
             android:background="?attr/selectableItemBackgroundBorderless" />
 
         <!-- Favorite -->
@@ -161,7 +158,6 @@
             app:tint="?attr/textMuted"
             android:clickable="true"
             android:focusable="true"
-            android:visibility="gone"
             android:background="?attr/selectableItemBackgroundBorderless" />
 
     </LinearLayout>

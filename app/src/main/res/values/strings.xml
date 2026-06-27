@@ -52,6 +52,7 @@
     <string name="lang_samples_title">Language Sample Texts</string>
     <string name="glyph_settings_title">Glyph Keyboard</string>
     <!-- Preview screen tooltips -->
+    <string name="tooltip_add_library">Add to Library</string>
     <string name="tooltip_font_info">Font Info</string>
     <string name="tooltip_font_metadata">Font Metadata</string>
     <string name="tooltip_glyph_map">Glyph Map</string>

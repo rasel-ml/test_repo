@@ -167,27 +167,51 @@ class PreviewFragment : Fragment() {
         binding.tvFontName.text = font.effectiveMeta.family.ifEmpty { font.displayName }
         binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
 
-        // ── Menu bar visibility ───────────────────────────────────────────
+        // ── Menu bar: Add (toolbar), Delete, Favorite ─────────────────────
         val inLibrary = !tempMode || FontRepository.isInLibrary(font.id)
 
-        if (tempMode && !FontRepository.isInLibrary(font.id)) {
+        // Add button in toolbar — only shown in temp mode for fonts not yet in library
+        if (tempMode && !inLibrary) {
             binding.btnAddToLibrary.visibility = View.VISIBLE
-            binding.btnAddToLibrary.setOnClickListener {
-                FontRepository.promoteToLibrary(font.id, requireContext())
-                binding.btnAddToLibrary.visibility = View.GONE
-                binding.btnDelete.visibility   = View.VISIBLE
-                binding.btnFavorite.visibility = View.VISIBLE
-                Toast.makeText(requireContext(), "Added to library", Toast.LENGTH_SHORT).show()
-            }
         } else {
             binding.btnAddToLibrary.visibility = View.GONE
         }
 
-        binding.btnDelete.visibility   = if (inLibrary) View.VISIBLE else View.GONE
-        binding.btnFavorite.visibility = if (inLibrary) View.VISIBLE else View.GONE
+        // Delete — only for library fonts
+        binding.btnDelete.isEnabled = inLibrary
+        binding.btnDelete.alpha     = if (inLibrary) 1f else 0.35f
+
+        // Favorite — always visible; inactive until in library
+        fun updateFavoriteState(inLib: Boolean) {
+            val fav = inLib && FontRepository.isFavorite(font.id)
+            binding.btnFavorite.setImageResource(
+                if (fav) R.drawable.ic_star else R.drawable.ic_star_outline)
+            binding.btnFavorite.imageTintList =
+                android.content.res.ColorStateList.valueOf(
+                    if (fav) p.accent else p.textMuted)
+            binding.btnFavorite.alpha = if (inLib) 1f else 0.35f
+        }
+        updateFavoriteState(inLibrary)
+
+        // Track whether we've added to library this session
+        var addedToLibrary = inLibrary
+
+        binding.btnAddToLibrary.setOnClickListener {
+            FontRepository.promoteToLibrary(font.id, requireContext())
+            binding.btnAddToLibrary.visibility = View.GONE
+            binding.btnDelete.isEnabled = true
+            binding.btnDelete.alpha     = 1f
+            addedToLibrary = true
+            updateFavoriteState(true)
+            Toast.makeText(requireContext(), "Added to library", Toast.LENGTH_SHORT).show()
+        }
+        binding.btnAddToLibrary.setOnLongClickListener {
+            showTooltip(it, getString(R.string.tooltip_add_library)); true
+        }
 
         // ── Delete ────────────────────────────────────────────────────────
         binding.btnDelete.setOnClickListener {
+            if (!addedToLibrary) return@setOnClickListener
             DeleteFontDialog.show(
                 context = requireContext(),
                 font = font,
@@ -200,16 +224,14 @@ class PreviewFragment : Fragment() {
         }
 
         // ── Favorite ──────────────────────────────────────────────────────
-        fun updateFav() {
-            val fav = FontRepository.isFavorite(font.id)
-            binding.btnFavorite.setImageResource(
-                if (fav) R.drawable.ic_star else R.drawable.ic_star_outline)
-            binding.btnFavorite.imageTintList =
-                android.content.res.ColorStateList.valueOf(if (fav) p.accent else p.textMuted)
-        }
-        updateFav()
         binding.btnFavorite.setOnClickListener {
-            FontRepository.toggleFavorite(font.id, requireContext()); updateFav()
+            if (!addedToLibrary) {
+                Toast.makeText(requireContext(),
+                    "Add to library first to favourite", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            FontRepository.toggleFavorite(font.id, requireContext())
+            updateFavoriteState(true)
         }
 
         // ── Navigation ────────────────────────────────────────────────────
