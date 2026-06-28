@@ -168,41 +168,30 @@ class PreviewFragment : Fragment() {
         binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
 
         // ── Menu bar: Add (toolbar), Delete, Favorite ─────────────────────
-        val inLibrary = !tempMode || FontRepository.isInLibrary(font.id)
+        var isInLib = FontRepository.isInLibrary(font.id)
 
-        // Add button in toolbar — only shown in temp mode for fonts not yet in library
-        if (tempMode && !inLibrary) {
-            binding.btnAddToLibrary.visibility = View.VISIBLE
-        } else {
-            binding.btnAddToLibrary.visibility = View.GONE
-        }
+        // Add button in toolbar — only when font not yet in library
+        binding.btnAddToLibrary.visibility =
+            if (tempMode && !isInLib) View.VISIBLE else View.GONE
 
-        // Delete — only for library fonts
-        binding.btnDelete.isEnabled = inLibrary
-        binding.btnDelete.alpha     = if (inLibrary) 1f else 0.35f
-
-        // Favorite — always visible; inactive until in library
-        fun updateFavoriteState(inLib: Boolean) {
-            val fav = inLib && FontRepository.isFavorite(font.id)
+        fun updateFavoriteState() {
+            val fav = isInLib && FontRepository.isFavorite(font.id)
             binding.btnFavorite.setImageResource(
                 if (fav) R.drawable.ic_star else R.drawable.ic_star_outline)
             binding.btnFavorite.imageTintList =
                 android.content.res.ColorStateList.valueOf(
-                    if (fav) p.accent else p.textMuted)
-            binding.btnFavorite.alpha = if (inLib) 1f else 0.35f
+                    if (fav) p.accent else if (isInLib) p.textMuted else p.textMuted)
+            // Dim when not in library to signal inactive
+            binding.btnFavorite.alpha = if (isInLib) 1f else 0.38f
         }
-        updateFavoriteState(inLibrary)
+        updateFavoriteState()
 
-        // Track whether we've added to library this session
-        var addedToLibrary = inLibrary
-
+        // ── Add to Library ────────────────────────────────────────────────
         binding.btnAddToLibrary.setOnClickListener {
             FontRepository.promoteToLibrary(font.id, requireContext())
+            isInLib = true
             binding.btnAddToLibrary.visibility = View.GONE
-            binding.btnDelete.isEnabled = true
-            binding.btnDelete.alpha     = 1f
-            addedToLibrary = true
-            updateFavoriteState(true)
+            updateFavoriteState()
             Toast.makeText(requireContext(), "Added to library", Toast.LENGTH_SHORT).show()
         }
         binding.btnAddToLibrary.setOnLongClickListener {
@@ -211,27 +200,40 @@ class PreviewFragment : Fragment() {
 
         // ── Delete ────────────────────────────────────────────────────────
         binding.btnDelete.setOnClickListener {
-            if (!addedToLibrary) return@setOnClickListener
-            DeleteFontDialog.show(
-                context = requireContext(),
-                font = font,
-                onRemoveFromLibrary = { findNavController().popBackStack() },
-                onDeletePermanently = {
-                    pendingDeleteFontId = font.id
-                    storageDeleteHelper.requestDelete(font.uri)
-                }
-            )
+            if (isInLib) {
+                // Normal: offer remove from library OR delete permanently
+                DeleteFontDialog.show(
+                    context = requireContext(),
+                    font = font,
+                    onRemoveFromLibrary = { findNavController().popBackStack() },
+                    onDeletePermanently = {
+                        pendingDeleteFontId = font.id
+                        storageDeleteHelper.requestDelete(font.uri)
+                    }
+                )
+            } else {
+                // Not in library yet — only permanent delete makes sense
+                android.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Delete font")
+                    .setMessage("Permanently delete \"${font.displayName}\"?")
+                    .setPositiveButton("Delete") { _, _ ->
+                        pendingDeleteFontId = font.id
+                        storageDeleteHelper.requestDelete(font.uri)
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
         }
 
         // ── Favorite ──────────────────────────────────────────────────────
         binding.btnFavorite.setOnClickListener {
-            if (!addedToLibrary) {
+            if (!isInLib) {
                 Toast.makeText(requireContext(),
                     "Add to library first to favourite", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             FontRepository.toggleFavorite(font.id, requireContext())
-            updateFavoriteState(true)
+            updateFavoriteState()
         }
 
         // ── Navigation ────────────────────────────────────────────────────

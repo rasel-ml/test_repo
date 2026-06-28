@@ -389,7 +389,7 @@ class FontListAdapter(
 
         fun makeSep(): TextView {
             val sep = TextView(ctx)
-            sep.text      = " · "
+            sep.text      = " | "
             sep.textSize  = 11f
             sep.setTextColor(Color.argb(60,
                 Color.red(p.textMuted), Color.green(p.textMuted), Color.blue(p.textMuted)))
