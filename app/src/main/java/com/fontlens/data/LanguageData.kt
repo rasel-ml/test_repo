@@ -365,7 +365,8 @@ fun supportedLanguages(
 
 /** Default sample texts keyed by ISO code. */
 fun defaultLanguageSamples(): Map<String, String> = mapOf(
-    "ansi"    to "ANSI Legacy Font — àáâãäåæçèéêëìíîï",
+    "bn"      to "আমার সোনার বাংলা আমি তোমায় ভালোবাসি",
+    "as"      to "সকলো মানুহ স্বাধীনভাৱে জন্মগ্ৰহণ কৰে",
     "en"      to "The quick brown fox jumps over the lazy dog",
     "es"      to "El veloz murciélago hindú comía feliz cardillo y kiwi",
     "fr"      to "Portez ce vieux whisky au juge blond qui fume",
@@ -424,6 +425,5 @@ fun defaultLanguageSamples(): Map<String, String> = mapOf(
     "bo"      to "མི་རིགས་ཀྱི་གོ་མཐོ་དང་ཐོབ་ཐང་གི་ཐད་ནས་རང་དབང་ཡོད།",
     "lo"      to "ມະນຸດທຸກຄົນເກີດມາມີສິດທິເທົ່າທຽມກັນ",
     "mn"      to "Хүн бүр төрөлхийн эрх чөлөөтэй",
-    "bn"      to "আমার সোনার বাংলা আমি তোমায় ভালোবাসি",
-    "as"      to "সকলো মানুহ স্বাধীনভাৱে জন্মগ্ৰহণ কৰে"
+    "ansi"    to "ANSI Legacy Font — àáâãäåæçèéêëìíîï"
 )
