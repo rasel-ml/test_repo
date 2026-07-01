@@ -467,6 +467,42 @@ class PreviewFragment : Fragment() {
     }
     // ── Capture preview to PNG ────────────────────────────────────────────────
 
+    // ── Tooltip helper ────────────────────────────────────────────────────────
+
+    private fun showTooltip(anchor: View, text: String) {
+        val ctx = requireContext()
+        val dp  = ctx.resources.displayMetrics.density
+
+        val tv = android.widget.TextView(ctx).apply {
+            this.text = text
+            textSize  = 12f
+            setTextColor(android.graphics.Color.WHITE)
+            setPadding((10 * dp).toInt(), (5 * dp).toInt(), (10 * dp).toInt(), (5 * dp).toInt())
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(android.graphics.Color.argb(220, 30, 30, 30))
+                cornerRadius = 4f * dp
+            }
+        }
+
+        val popup = android.widget.PopupWindow(tv,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT)
+        popup.isOutsideTouchable = true
+        popup.isFocusable        = false
+        popup.elevation          = 8f * dp
+
+        anchor.post {
+            val loc = IntArray(2); anchor.getLocationOnScreen(loc)
+            tv.measure(android.view.View.MeasureSpec.UNSPECIFIED, android.view.View.MeasureSpec.UNSPECIFIED)
+            val xOff = (anchor.width - tv.measuredWidth) / 2
+            popup.showAsDropDown(anchor, xOff, -(anchor.height + tv.measuredHeight + (4 * dp).toInt()))
+        }
+
+        anchor.postDelayed({ popup.dismiss() }, 1500)
+    }
+
+    // ── Capture preview to PNG ────────────────────────────────────────────────
+
     private fun capturePreview(fontName: String) {
         val ctx = requireContext()
 
